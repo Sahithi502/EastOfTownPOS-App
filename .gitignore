@@ -1,0 +1,13 @@
+node_modules/
+dist/
+release/
+backend/target/
+*.db
+*.db-shm
+*.db-wal
+*.log
+runtime/
+runtime-staging-*/
+.test-desktop-profile/
+.test-desktop-profile/
+runtime/

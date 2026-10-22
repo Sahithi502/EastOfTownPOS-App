@@ -1,0 +1,54 @@
+{
+  "name": "east-of-town-pos",
+  "version": "0.1.0",
+  "private": true,
+  "main": "electron/main.cjs",
+  "scripts": {
+    "test:api": "node scripts/backend-smoke.cjs",
+    "dev": "vite --config frontend/vite.config.ts",
+    "build": "tsc --noEmit && vite build --config frontend/vite.config.ts",
+    "start": "electron .",
+    "package:win": "npm run build && electron-builder --win nsis"
+  },
+  "dependencies": {
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "electron": "^44.7.0",
+    "electron-builder": "26.15.3",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.12"
+  },
+  "build": {
+    "appId": "com.eastoftown.pos",
+    "productName": "East of Town",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "backend/target/pos-0.1.0.jar",
+        "to": "backend/pos.jar"
+      },
+      {
+        "from": "runtime",
+        "to": "runtime"
+      }
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}
