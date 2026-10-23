@@ -21,7 +21,7 @@ npm.cmd start
 
 The desktop launcher starts and monitors Java automatically. It selects a loopback port and gives the backend a random per-launch secret, never exposed to the renderer. `npm run dev` is for isolated frontend design; the complete app uses the compiled renderer with `npm start`.
 
-Close the application before rebuilding, because Windows locks the running JAR. If using Command Prompt, start with `cd /d C:\Ammu\EastOfTown\EastOfTownPOS-App`. For subsequent daily launches, run only `npm.cmd start` in the repository root. First launch of Stage 2 asks you to create an administrator (username 3–40 permitted characters, password at least 12 characters). Existing Stage 1 inventory/barcodes are preserved by V002. There is no password recovery UI yet; retain your owner password securely.
+Close the application before rebuilding, because Windows locks the running JAR. If using Command Prompt, start with `cd /d C:\Ammu\EastOfTown\EastOfTownPOS-App`. For subsequent daily launches, run only `npm.cmd start` in the repository root. First launch of Stage 2 asks you to create an administrator (username 3–40 permitted characters, password at least 12 characters) and displays a one-time recovery code. Save that code securely. Existing Stage 1 inventory/barcodes are preserved by V002; V003 adds recovery-code storage for existing installations.
 
 ## Data
 

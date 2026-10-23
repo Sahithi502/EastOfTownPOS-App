@@ -14,6 +14,7 @@ import org.springframework.http.HttpStatus;
 @Service
 public class AuthService {
     public record User(String id,String username,String role) {}
+    public record SetupResult(User user,String recoveryCode) {}
     record Session(User user,Instant expires) {}
     private final CatalogRepository repo;
     private final BCryptPasswordEncoder encoder=new BCryptPasswordEncoder(12);
@@ -23,7 +24,14 @@ public class AuthService {
     public boolean needsSetup(){return repo.jdbc().queryForObject("SELECT COUNT(*) FROM users",Integer.class)==0;}
     @Transactional public synchronized User setup(String username,String password){
         if(!needsSetup()) throw new IllegalArgumentException("Administrator already configured. Please sign in.");
-        return create(username,password,"ADMIN");
+        return setupWithRecovery(username,password).user();
+    }
+    @Transactional public synchronized SetupResult setupWithRecovery(String username,String password){
+        if(!needsSetup()) throw new IllegalArgumentException("Administrator already configured. Please sign in.");
+        String code=generateRecoveryCode();
+        User user=create(username,password,"ADMIN");
+        repo.jdbc().update("UPDATE users SET recovery_code_hash=?,recovery_code_created_at=? WHERE id=?",encoder.encode(code),Instant.now().toString(),user.id());
+        return new SetupResult(user,code);
     }
     @Transactional public User create(String username,String password,String role){
         return create(username,password,role,null);
@@ -52,6 +60,32 @@ public class AuthService {
         sessions.put(session,new Session(user,now.plusSeconds(8*3600)));
         return Map.of("session",session,"user",user);
     }
+    @Transactional public synchronized Map<String,Object> recover(String username,String recoveryCode,String newPassword){
+        Instant now=Instant.now();
+        var recent=attempts.computeIfAbsent("recovery",k->new ArrayList<>());
+        recent.removeIf(t->t.isBefore(now.minusSeconds(60)));
+        if(recent.size()>=5) throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,"Too many recovery attempts. Wait one minute.");
+        recent.add(now);
+        if(recoveryCode==null || recoveryCode.length()<16) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Recovery code or username is incorrect");
+        var rows=repo.jdbc().queryForList("SELECT * FROM users WHERE username=? AND role='ADMIN' AND active=1",username==null?"":username);
+        if(rows.isEmpty() || rows.getFirst().get("recovery_code_hash")==null || !encoder.matches(recoveryCode,rows.getFirst().get("recovery_code_hash").toString())) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Recovery code or username is incorrect");
+        validatePassword(newPassword);
+        String id=rows.getFirst().get("id").toString();
+        repo.jdbc().update("UPDATE users SET password_hash=?,recovery_code_hash=NULL,recovery_code_created_at=NULL WHERE id=?",encoder.encode(newPassword),id);
+        sessions.entrySet().removeIf(e->e.getValue().user().id().equals(id));
+        repo.jdbc().update("INSERT INTO audit_logs VALUES (?,?,?,?,?)",UUID.randomUUID().toString(),"ADMIN_PASSWORD_RECOVERED",id,id,now.toString());
+        return Map.of("ok",true,"message","Password updated. Sign in with the new password.");
+    }
+    @Transactional public synchronized String rotateRecoveryCode(){
+        User admin=admin(); String code=generateRecoveryCode();
+        repo.jdbc().update("UPDATE users SET recovery_code_hash=?,recovery_code_created_at=? WHERE id=?",encoder.encode(code),Instant.now().toString(),admin.id());
+        repo.jdbc().update("INSERT INTO audit_logs VALUES (?,?,?,?,?)",UUID.randomUUID().toString(),"ADMIN_RECOVERY_CODE_ROTATED",admin.id(),admin.id(),Instant.now().toString());
+        return code;
+    }
+    private void validatePassword(String password){
+        if(password==null || password.length()<12 || password.getBytes(java.nio.charset.StandardCharsets.UTF_8).length>72) throw new IllegalArgumentException("Password must contain at least 12 characters and at most 72 UTF-8 bytes");
+    }
+    private String generateRecoveryCode(){byte[] bytes=new byte[18];new SecureRandom().nextBytes(bytes);return "EOT-"+HexFormat.of().formatHex(bytes).toUpperCase(Locale.ROOT);}
     public User current(){
         var attributes=RequestContextHolder.getRequestAttributes();
         String key=attributes instanceof ServletRequestAttributes a?a.getRequest().getHeader("X-EOT-Session"):null;
