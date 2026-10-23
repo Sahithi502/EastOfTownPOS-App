@@ -1,0 +1,7 @@
+CREATE TABLE users (id TEXT PRIMARY KEY, username TEXT NOT NULL COLLATE NOCASE UNIQUE, password_hash TEXT NOT NULL, role TEXT NOT NULL CHECK(role IN ('ADMIN','BILLING')), active INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1)), created_at TEXT NOT NULL);
+CREATE TABLE stock_adjustments (id TEXT PRIMARY KEY, request_key TEXT NOT NULL UNIQUE, variant_id TEXT NOT NULL REFERENCES product_variants(id), quantity INTEGER NOT NULL CHECK(quantity != 0), reason TEXT NOT NULL, effective_date TEXT NOT NULL, actor_id TEXT NOT NULL REFERENCES users(id), created_at TEXT NOT NULL);
+CREATE TABLE import_batches (id TEXT PRIMARY KEY, filename TEXT NOT NULL, raw_json TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('UPLOADED','PREVIEWED','COMMITTED')), config_json TEXT, preview_token TEXT UNIQUE, revision TEXT, created_at TEXT NOT NULL);
+CREATE TABLE import_history (id TEXT PRIMARY KEY, batch_id TEXT NOT NULL UNIQUE REFERENCES import_batches(id), filename TEXT NOT NULL, mode TEXT NOT NULL, created_count INTEGER NOT NULL, updated_count INTEGER NOT NULL, skipped_count INTEGER NOT NULL, failed_count INTEGER NOT NULL, actor_id TEXT NOT NULL REFERENCES users(id), created_at TEXT NOT NULL);
+CREATE INDEX stock_created ON stock_movements(created_at);
+CREATE UNIQUE INDEX stock_adjustment_reference ON stock_movements(reference_id) WHERE kind='ADJUSTMENT' AND reference_id IS NOT NULL;
+INSERT INTO application_settings VALUES ('write_lock','0');

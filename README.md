@@ -1,17 +1,17 @@
 # East of Town Men's Fashion
 
-Offline Windows retail application, implemented in the requested stages. **Current milestone: Stage 1 catalog foundation. This is not yet a production billing release.**
+Offline Windows retail application, implemented in the requested stages. **Current milestone: Stage 2, version 0.2.0 — Excel imports, stock adjustments and barcode labels. Billing begins in Stage 3.**
 
-Implemented: Electron desktop shell, React/TypeScript catalog, category creation, product and size/colour variant creation/editing, permanent unique internal barcode values, opening-stock ledger, low-stock indicators, optimistic edit protection, local SQLite persistence, checksummed versioned migrations, audit events and exact integer-paise prices. No business demo data is seeded.
+Implemented: persistent catalog/categories/variants, exact integer-paise prices, stock ledger and history, administrator/billing login, audited stock adjustments, Excel template/upload/mapping/validation/confirmation/history, error workbook export, Code 128 label preview/PDF/Windows print submission, configurable dimensions/printer and test printing. No business demo data or default credentials are seeded.
 
-Not yet implemented: checkout, Excel import/export, rendered Code 128 labels, printers, customers, sales reports, returns, user roles, backup/restore and final installer validation. These are tracked in [the roadmap](docs/ROADMAP.md). Inventory is read-only after opening stock in this milestone. Do not enter live trading records until release acceptance is complete.
+Not yet implemented: checkout, receipts, customers, sales reports, returns, backup/restore and final release acceptance. Physical label-printer calibration and scanning require your devices. Use isolated test stock until release acceptance is complete. See [Stage 2 design and acceptance](docs/STAGE_2.md), [stage index](docs/STAGES.md) and [roadmap](docs/ROADMAP.md).
 
 ## Development on Windows
 
 Prerequisites: Windows 10/11 x64, JDK 21 or 25, Maven 3.9+, Node.js 22.12+ (24 LTS recommended). Initial dependency downloads require internet. Running the built app uses local resources only.
 
 ```powershell
-cd C:\Ammu\EastOfTown\backend
+cd C:\Ammu\EastOfTown\EastOfTownPOS-App\backend
 mvn clean package
 cd ..
 npm.cmd ci
@@ -20,6 +20,8 @@ npm.cmd start
 ```
 
 The desktop launcher starts and monitors Java automatically. It selects a loopback port and gives the backend a random per-launch secret, never exposed to the renderer. `npm run dev` is for isolated frontend design; the complete app uses the compiled renderer with `npm start`.
+
+Close the application before rebuilding, because Windows locks the running JAR. If using Command Prompt, start with `cd /d C:\Ammu\EastOfTown\EastOfTownPOS-App`. For subsequent daily launches, run only `npm.cmd start` in the repository root. First launch of Stage 2 asks you to create an administrator (username 3–40 permitted characters, password at least 12 characters). Existing Stage 1 inventory/barcodes are preserved by V002. There is no password recovery UI yet; retain your owner password securely.
 
 ## Data
 
@@ -31,6 +33,8 @@ The automated integration suite uses a unique temporary SQLite test database. No
 
 Build the backend and renderer first. Run `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/prepare-runtime.ps1` to download and SHA-256 verify Temurin 21 into `runtime/`. The exact downloaded release/checksum/source is recorded in `docs/runtime-manifest.json`; upstream legal notices remain in the runtime. Then run `npm.cmd run package:win`. Electron Builder creates the NSIS installer in `release/`. The runtime is bundled so the shop PC does not need Java installed separately. Signing, clean-machine installation, restart, restore, scanner and printer acceptance remain Stage 6 release gates.
 
-Run `mvn test` in `backend/` for the integration suite. After preparing the runtime and building the backend, run `npm.cmd run test:api` from the project root for a REST test with real process restart using the bundled Java 21 runtime. Its uniquely named temporary database is retained for inspection. The development desktop can use a separate profile by setting `EOT_TEST_PROFILE` before `npm start`; the packaged app ignores this development-only override.
+`npm.cmd run package:dir` builds `release/win-unpacked/` without invoking NSIS's generated uninstaller. The local Stage 2 NSIS attempt failed during generated-uninstaller execution (`spawn UNKNOWN`); it is not claimed as a working installer. The directory build and source launch are available for evaluation. See STAGE_2_TEST_RESULTS.md for current limitations.
+
+Run `mvn test` in `backend/` for the integration suite. After building the backend, run `npm.cmd run test:api` from the project root for REST tests with real process restart. Java resolution is bundled runtime → JAVA_HOME → PATH; runtime preparation is only required for self-contained packaging. Run `npm.cmd run test:desktop` after `mvn package` and `npm run build` for the Electron import/stock/label workflow. Both smoke tests use unique temporary databases and retain them for inspection. Desktop tests generate screenshots in `docs/screenshots/` and mock only native file-chooser destinations, not the backend or import behavior. A development desktop can use a separate profile by setting `EOT_TEST_PROFILE` before `npm start`; the packaged app ignores this override.
 
 Read [operating steps](docs/USER_MANUAL.md), [architecture](docs/ARCHITECTURE.md), [dependencies](docs/DEPENDENCIES.md), and [milestones](docs/ROADMAP.md).

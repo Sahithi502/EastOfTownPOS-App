@@ -1,5 +1,7 @@
 # Stage 1 verification — 22 October 2026
 
+Historical Stage 1 evidence is retained below. Current Stage 2 evidence is in [STAGE_2_TEST_RESULTS.md](STAGE_2_TEST_RESULTS.md); implementation status across all stages is in [STAGES.md](STAGES.md).
+
 ## Passed
 
 - `mvn -B package`: successful build; 7 tests, 0 failures, 0 errors. Checks category/migration idempotence, persistent variant/opening ledger, duplicate-SKU rollback, barcode and stock preservation on edit, stale edit rejection, exact money conversion, literal wildcard search and foreign-key rollback.
