@@ -155,10 +155,11 @@ class Stage2Test {
     }
     @Test void administratorRecoveryCodeResetsPasswordAndIsSingleUse(){
         String code="EOT-TEST-RECOVERY-CODE-123456";
-        repo.jdbc().update("UPDATE users SET recovery_code_hash=?,recovery_code_created_at=? WHERE id=?",new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder(12).encode(code),Instant.now().toString(),actor);
-        assertEquals(true,auth.recover("test-owner",code,"test-password-recovered").get("ok"));
-        assertTrue(auth.login("test-owner","test-password-recovered").containsKey("session"));
-        assertThrows(org.springframework.web.server.ResponseStatusException.class,()->auth.recover("test-owner",code,"test-password-again"));
+        AuthService.User recoveryUser=auth.create("recovery-owner","test-password-recovery","ADMIN");
+        repo.jdbc().update("UPDATE users SET recovery_code_hash=?,recovery_code_created_at=? WHERE id=?",new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder(12).encode(code),Instant.now().toString(),recoveryUser.id());
+        assertEquals(true,auth.recover("recovery-owner",code,"test-password-recovered").get("ok"));
+        assertTrue(auth.login("recovery-owner","test-password-recovered").containsKey("session"));
+        assertThrows(org.springframework.web.server.ResponseStatusException.class,()->auth.recover("recovery-owner",code,"test-password-again"));
     }
     @Test void upgradePreservesStage1DataAndMigrationChecksums()throws Exception{
         SQLiteDataSource source=new SQLiteDataSource();source.setUrl("jdbc:sqlite:"+Files.createTempDirectory("eot-upgrade-").resolve("old.db"));JdbcTemplate db=new JdbcTemplate(source);
