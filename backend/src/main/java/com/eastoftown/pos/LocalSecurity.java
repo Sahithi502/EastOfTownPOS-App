@@ -9,7 +9,8 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class LocalSecurity extends org.springframework.web.filter.OncePerRequestFilter {
-    private final String token = System.getenv("EOT_API_TOKEN");
+    private final String token;
+    public LocalSecurity(@org.springframework.beans.factory.annotation.Value("${eot.api-token:${EOT_API_TOKEN:}}") String token){this.token=token;}
     @Override protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain) throws ServletException, IOException {
         if (token == null || token.length() < 32) { res.sendError(503,"Start the backend through the desktop launcher"); return; }
         String given = req.getHeader("X-EOT-Token");

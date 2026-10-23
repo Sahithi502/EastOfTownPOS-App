@@ -1,13 +1,13 @@
 {
     "binary":  {
                    "architecture":  "x64",
-                   "download_count":  1538915,
+                   "download_count":  1594378,
                    "heap_size":  "normal",
                    "image_type":  "jre",
                    "installer":  {
                                      "checksum":  "536eeb1dc3f743e5932a92e3549430fc75392c5d379101c1456a1c201aa6e66b",
                                      "checksum_link":  "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jre_x64_windows_hotspot_21.0.12.1_1.msi.sha256.txt",
-                                     "download_count":  262426,
+                                     "download_count":  271524,
                                      "link":  "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jre_x64_windows_hotspot_21.0.12.1_1.msi",
                                      "metadata_link":  "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jre_x64_windows_hotspot_21.0.12.1_1.msi.json",
                                      "name":  "OpenJDK21U-jre_x64_windows_hotspot_21.0.12.1_1.msi",
@@ -19,7 +19,7 @@
                    "package":  {
                                    "checksum":  "d35f31e712f0fcf6ac5a093edc90204fbff22f720ba3950bd09d331d5e621636",
                                    "checksum_link":  "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jre_x64_windows_hotspot_21.0.12.1_1.zip.sha256.txt",
-                                   "download_count":  1276489,
+                                   "download_count":  1322854,
                                    "link":  "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jre_x64_windows_hotspot_21.0.12.1_1.zip",
                                    "metadata_link":  "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jre_x64_windows_hotspot_21.0.12.1_1.zip.json",
                                    "name":  "OpenJDK21U-jre_x64_windows_hotspot_21.0.12.1_1.zip",

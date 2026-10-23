@@ -22,13 +22,13 @@ class CatalogTest {
     @Test void initialCategoriesAndMigrationAreStable() throws Exception {
         assertEquals(8,repo.categories().size());
         new Migrations(repo.jdbc(),new org.springframework.transaction.support.TransactionTemplate(new org.springframework.jdbc.datasource.DataSourceTransactionManager(repo.jdbc().getDataSource()))).migrate();
-        assertEquals(1,repo.jdbc().queryForObject("SELECT COUNT(*) FROM schema_migrations",Integer.class));
+        assertEquals(2,repo.jdbc().queryForObject("SELECT COUNT(*) FROM schema_migrations",Integer.class));
     }
     @Test void createsPersistentVariantAndOpeningLedger() throws Exception {
         String id=service.save(null,input("PERSIST-1",7));
         var v=repo.variants("PERSIST-1").getFirst();
         assertEquals(id,v.get("id"));assertEquals(99999,((Number)v.get("selling_paise")).intValue());
-        assertEquals(7,((Number)v.get("current_stock")).intValue());assertTrue(v.get("barcode").toString().startsWith("EOT"));
+        assertEquals(7,((Number)v.get("current_stock")).intValue());assertTrue(v.get("barcode").toString().matches("20[0-9]{12}"));
         SQLiteDataSource independent=new SQLiteDataSource();independent.setUrl("jdbc:sqlite:"+file);
         assertEquals(1,new JdbcTemplate(independent).queryForObject("SELECT COUNT(*) FROM product_variants WHERE id=?",Integer.class,id));
     }
