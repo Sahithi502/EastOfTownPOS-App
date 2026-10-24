@@ -159,6 +159,23 @@ class Stage2Test {
         mvc.perform(post("/api/labels/pdf").header("X-EOT-Token",TOKEN).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(one))).andExpect(status().isUnauthorized());
         mvc.perform(post("/api/labels/pdf").header("X-EOT-Token",TOKEN).header("X-EOT-Session",adminSession).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(two))).andExpect(status().isOk()).andExpect(content().contentType(MediaType.APPLICATION_PDF));
     }
+    @Test void longLegacyBarcodesFitThermalRollAndDecodeAt203Dpi()throws Exception{
+        String id=variant("EOT990909",1);
+        for(String code:List.of("EOTROTATEDABCDEFGHIJKLMNOPQRSTUVWXYZ12345678","ABCDEFGHIJKLMNOPQRSTUVWXYZ".repeat(3)+"AB")){
+            repo.jdbc().update("UPDATE product_variants SET barcode=? WHERE id=?",code,id);
+            var request=new LabelService.Request(List.of(new LabelService.Item(id,1)),80,40,true);
+            try(var pdf=Loader.loadPDF(labels.pdf(request))){
+                assertEquals(80,pdf.getPage(0).getMediaBox().getWidth()*25.4/72,.01);
+                var image=new PDFRenderer(pdf).renderImageWithDPI(0,203);
+                var turned=new java.awt.image.BufferedImage(image.getHeight(),image.getWidth(),java.awt.image.BufferedImage.TYPE_INT_RGB);
+                var g=turned.createGraphics();g.translate(turned.getWidth(),0);g.rotate(Math.PI/2);g.drawImage(image,0,0,null);g.dispose();
+                var source=new RGBLuminanceSource(turned.getWidth(),turned.getHeight(),turned.getRGB(0,0,turned.getWidth(),turned.getHeight(),null,0,turned.getWidth()));
+                assertEquals(code,new MultiFormatReader().decode(new BinaryBitmap(new HybridBinarizer(source)),Map.of(DecodeHintType.TRY_HARDER,true)).getText());
+                assertEquals(code,repo.jdbc().queryForObject("SELECT barcode FROM product_variants WHERE id=?",String.class,id));
+                Files.write(Path.of("target","test-fixtures","long-thermal-preview.png"),Base64.getDecoder().decode(((List<Map<String,Object>>)labels.preview(request)).getFirst().get("image").toString().split(",",2)[1]));
+            }
+        }
+    }
     @Test void roleChecksCannotBeBypassedThroughRest()throws Exception{
         String id=variant("PERMISSION",3);String body=json.writeValueAsString(new StockService.Adjustment(id,1,3,"Received",LocalDate.now(),UUID.randomUUID()));
         mvc.perform(post("/api/stock/adjustments").header("X-EOT-Token",TOKEN).contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isUnauthorized());
