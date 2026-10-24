@@ -1,5 +1,7 @@
 # Operating manual — version 0.2.0 (Stages 1 and 2)
 
+For 80 mm POS thermal barcode printing, see [thermal printing instructions](THERMAL_PRINTING.md). Select the thermal roll layout in **Barcode labels** for automatic paper height.
+
 ## Launch and sign in
 
 Close any running older copy before rebuilding or upgrading. In Command Prompt, use the repository root:

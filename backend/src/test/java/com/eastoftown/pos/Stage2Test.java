@@ -140,6 +140,25 @@ class Stage2Test {
         assertThrows(IllegalArgumentException.class,()->labels.pdf(new LabelService.Request(List.of(new LabelService.Item(id,1)),35,30)));
         assertTrue(labels.pdf(new LabelService.Request(List.of(new LabelService.Item(id,1)),110,40)).length>100);assertEquals(legacy,repo.variants("LEGACY").getFirst().get("barcode"));
     }
+    @Test void thermalRollGrowsAndPreviewMatchesPdfExactly()throws Exception{
+        String id=variant("THERMAL",1);
+        var one=new LabelService.Request(List.of(new LabelService.Item(id,1)),80,40,true);
+        var two=new LabelService.Request(List.of(new LabelService.Item(id,2)),80,40,true);
+        try(var a=Loader.loadPDF(labels.pdf(one));var b=Loader.loadPDF(labels.pdf(two))){
+            assertEquals(1,b.getNumberOfPages());assertEquals(80,b.getPage(0).getMediaBox().getWidth()*25.4/72,.01);
+            assertTrue(b.getPage(0).getMediaBox().getHeight()>a.getPage(0).getMediaBox().getHeight());
+            var preview=(List<Map<String,Object>>)labels.preview(two);
+            String image=preview.getFirst().get("image").toString();
+            var png=javax.imageio.ImageIO.read(new ByteArrayInputStream(Base64.getDecoder().decode(image.substring(image.indexOf(',')+1))));
+            var rendered=new PDFRenderer(b).renderImageWithDPI(0,203);
+            assertEquals(rendered.getWidth(),png.getWidth());assertEquals(rendered.getHeight(),png.getHeight());
+            assertArrayEquals(rendered.getRGB(0,0,png.getWidth(),png.getHeight(),null,0,png.getWidth()),png.getRGB(0,0,png.getWidth(),png.getHeight(),null,0,png.getWidth()));
+            assertTrue(new org.apache.pdfbox.text.PDFTextStripper().getText(b).contains("SKU: THERMAL"));
+        }
+        assertThrows(IllegalArgumentException.class,()->labels.pdf(new LabelService.Request(List.of(new LabelService.Item(id,100)),80,40,true)));
+        mvc.perform(post("/api/labels/pdf").header("X-EOT-Token",TOKEN).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(one))).andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/labels/pdf").header("X-EOT-Token",TOKEN).header("X-EOT-Session",adminSession).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(two))).andExpect(status().isOk()).andExpect(content().contentType(MediaType.APPLICATION_PDF));
+    }
     @Test void roleChecksCannotBeBypassedThroughRest()throws Exception{
         String id=variant("PERMISSION",3);String body=json.writeValueAsString(new StockService.Adjustment(id,1,3,"Received",LocalDate.now(),UUID.randomUUID()));
         mvc.perform(post("/api/stock/adjustments").header("X-EOT-Token",TOKEN).contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isUnauthorized());

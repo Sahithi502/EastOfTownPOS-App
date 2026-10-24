@@ -6,11 +6,12 @@ export function Labels({admin}:{admin:boolean}){
  const [selected,setSelected]=useState<Record<string,number>>({}),[width,setWidth]=useState('80'),[height,setHeight]=useState('40');
  const [printers,setPrinters]=useState<string[]>([]),[printer,setPrinter]=useState(''),[preview,setPreview]=useState<any[]>([]);
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('');
- const request={items:Object.entries(selected).map(([variantId,copies])=>({variantId,copies})),widthMm:Number(width),heightMm:Number(height)};
+ const [thermal,setThermal]=useState(false);
+ const request={items:Object.entries(selected).map(([variantId,copies])=>({variantId,copies})),widthMm:thermal?80:Number(width),heightMm:Number(height),thermal};
  async function load(){try{setVariants(await api('GET','/variants?search='+encodeURIComponent(search)));}catch(e){setError(String(e));}}
  useEffect(()=>{
   load();Promise.all([api('GET','/labels/printers'),api('GET','/labels/settings')]).then(([list,settings])=>{
-   setPrinters(list);for(const s of settings){if(s.key==='label.width')setWidth(s.value);if(s.key==='label.height')setHeight(s.value);if(s.key==='label.printer')setPrinter(s.value);}
+   setPrinters(list);for(const s of settings){if(s.key==='label.width')setWidth(s.value);if(s.key==='label.height')setHeight(s.value);if(s.key==='label.printer')setPrinter(s.value);if(s.key==='label.thermal')setThermal(s.value==='true');}
   }).catch(e=>setError(String(e)));
  },[]);
  async function action(kind:'preview'|'pdf'|'print'|'test'|'settings'){
@@ -18,9 +19,9 @@ export function Labels({admin}:{admin:boolean}){
    if(kind==='preview')setPreview(await api('POST','/labels/preview',request));
    else if(kind==='pdf'){
     const result=await window.catalog.download({kind:'labels',labels:request});
-    if(result.saved)setMessage('Barcode label PDF saved. Print at actual size (100%).');
+    if(result.saved)setMessage('Barcode PDF saved. Print at actual size (100%).');
    }else if(kind==='settings'){
-    await api('POST','/labels/settings',{widthMm:Number(width),heightMm:Number(height),printer});setMessage('Label dimensions and printer preference saved.');
+    await api('POST','/labels/settings',{widthMm:Number(width),heightMm:Number(height),printer,thermal});setMessage('Label dimensions, layout and printer preference saved.');
    }else{
     const result=await api('POST','/labels/print',{labels:{...request,items:request.items.length?request.items:[{variantId:'test',copies:1}]},printer,test:kind==='test'});setMessage(result.message);
    }
@@ -33,8 +34,9 @@ export function Labels({admin}:{admin:boolean}){
   {message&&<div className="notice" role="status">{message}</div>}
   <div className="panel">
    <div className="mapping-grid">
-    <label>Label width (mm)<input disabled={busy} type="number" min="35" max="110" value={width} onChange={e=>{setWidth(e.target.value);setPreview([]);}}/></label>
-    <label>Label height (mm)<input disabled={busy} type="number" min="25" max="100" value={height} onChange={e=>{setHeight(e.target.value);setPreview([]);}}/></label>
+    <label>Print layout<select aria-label="Print layout" disabled={busy} value={thermal?'thermal':'labels'} onChange={e=>{setThermal(e.target.value==='thermal');setPreview([]);}}><option value="labels">Individual barcode labels</option><option value="thermal">Thermal POS roll — 80 mm × automatic height</option></select></label>
+    <label>Label width (mm)<input disabled={busy||thermal} type="number" min="35" max="110" value={thermal?'80':width} onChange={e=>{setWidth(e.target.value);setPreview([]);}}/></label>
+    <label>Label height (mm)<input disabled={busy||thermal} type="number" min="25" max="100" value={height} onChange={e=>{setHeight(e.target.value);setPreview([]);}}/>{thermal&&<small>Roll height is calculated from the content.</small>}</label>
     <label>Windows printer<select disabled={busy} value={printer} onChange={e=>setPrinter(e.target.value)}><option value="">Select a printer</option>{printers.map(p=><option key={p}>{p}</option>)}</select></label>
    </div>
    <div className="actions">
@@ -43,6 +45,7 @@ export function Labels({admin}:{admin:boolean}){
     <button disabled={busy} onClick={async()=>{try{setPrinters(await api('GET','/labels/printers'));}catch(e){setError(String(e));}}}>Refresh printers</button>
    </div>
    <p className="footnote">Use matching stock in the printer driver and actual size / 100% scaling. Long legacy barcodes may require wider labels. A submitted job still requires checking the printer output.</p>
+   <p className="footnote">Thermal roll uses 80 mm paper with automatic height and 4 mm side margins. Preview, printing and PDF use the same layout.</p>
   </div>
   <form className="toolbar" onSubmit={e=>{e.preventDefault();load();}}>
    <input placeholder="Search product, SKU or barcode" aria-label="Label product search" value={search} onChange={e=>setSearch(e.target.value)}/><button>Search</button>
@@ -61,8 +64,8 @@ export function Labels({admin}:{admin:boolean}){
    <button className="primary" disabled={busy||!preview.length||!printer} onClick={()=>action('print')}>Print labels</button>
    <button disabled={busy} onClick={()=>{setSelected({});setPreview([]);}}>Clear selection</button>
   </div>
-  <div className="label-grid">{preview.map(p=><article className="label-preview" style={{width:Number(width)+'mm'}} key={p.variantId}>
-   <img className="pdf-label" src={p.image} alt={'Code 128: '+p.barcode}/><small>{p.copies} copies · {p.sku}</small>
+  <div className="label-grid">{preview.map(p=><article className="label-preview" style={{width:(thermal?80:Number(width))+'mm'}} key={p.variantId}>
+   <img className="pdf-label" src={p.image} alt={'Code 128: '+p.barcode}/><small>{thermal?Object.values(selected).reduce((a,b)=>a+b,0):p.copies} copies · {p.sku}</small>
   </article>)}</div>
  </>;
 }

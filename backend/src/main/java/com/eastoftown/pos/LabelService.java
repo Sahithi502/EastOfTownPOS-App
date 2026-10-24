@@ -17,7 +17,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class LabelService {
     public record Item(@NotBlank String variantId,@Min(1) @Max(100) int copies){}
-    public record Request(@NotEmpty @Size(max=50) List<@NotNull @Valid Item> items,@Min(35) @Max(110) double widthMm,@Min(25) @Max(100) double heightMm){}
+    public record Request(@NotEmpty @Size(max=50) List<@NotNull @Valid Item> items,@Min(35) @Max(110) double widthMm,@Min(25) @Max(100) double heightMm,boolean thermal){
+        public Request(List<Item> items,double widthMm,double heightMm){this(items,widthMm,heightMm,false);}
+    }
     record Label(String id,String name,String sku,String variant,String barcode,long price,int copies){}
     final CatalogRepository repo;final BarcodeService barcode;
     public LabelService(CatalogRepository repo,BarcodeService barcode){this.repo=repo;this.barcode=barcode;}
@@ -29,12 +31,13 @@ public class LabelService {
             if(((Number)row.get("active")).intValue()!=1)throw new IllegalArgumentException("Activate the variant before printing labels: "+row.get("sku"));
             String code=row.get("barcode").toString();
             // Ten quiet modules at each end; never shrink below the minimum bar width.
-            if((request.widthMm()-6)/(barcode.modules(code).length+20)<0.19)throw new IllegalArgumentException("Label is too narrow for barcode "+row.get("sku")+". Increase width; the stored barcode will be preserved.");
+            if((request.thermal()?72:request.widthMm()-6)/(barcode.modules(code).length+20)<0.19)throw new IllegalArgumentException("Label is too narrow for barcode "+row.get("sku")+". Increase width; the stored barcode will be preserved.");
             labels.add(new Label(item.variantId(),row.get("name").toString(),row.get("sku").toString(),row.get("size")+" / "+row.get("colour"),code,((Number)row.get("selling_paise")).longValue(),item.copies()));
         }
         return labels;
     }
     public Object preview(Request request){
+        if(request.thermal())return List.of(Map.of("variantId","thermal-roll","sku","80 mm thermal roll","copies",1,"barcode","selected products","image","data:image/png;base64,"+Base64.getEncoder().encodeToString(png(request))));
         var source=labels(request);var single=source.stream().map(l->new Label(l.id(),l.name(),l.sku(),l.variant(),l.barcode(),l.price(),1)).toList();
         try(var document=org.apache.pdfbox.Loader.loadPDF(render(single,request.widthMm(),request.heightMm()))){
             var renderer=new org.apache.pdfbox.rendering.PDFRenderer(document);List<Map<String,Object>> list=new ArrayList<>();
@@ -48,7 +51,37 @@ public class LabelService {
         boolean[] bars=barcode.modules(value);BufferedImage img=new BufferedImage((bars.length+20)*3,100,BufferedImage.TYPE_BYTE_BINARY);
         var graphics=img.createGraphics();graphics.setColor(java.awt.Color.WHITE);graphics.fillRect(0,0,img.getWidth(),img.getHeight());graphics.setColor(java.awt.Color.BLACK);for(int x=0;x<bars.length;x++)if(bars[x])graphics.fillRect((x+10)*3,0,3,100);graphics.dispose();ByteArrayOutputStream out=new ByteArrayOutputStream();ImageIO.write(img,"png",out);return out.toByteArray();
     }catch(IOException e){throw new IllegalStateException(e);}}
-    public byte[] pdf(Request request){return render(labels(request),request.widthMm(),request.heightMm());}
+    public byte[] pdf(Request request){var source=labels(request);return request.thermal()?thermal(source):render(source,request.widthMm(),request.heightMm());}
+    private byte[] png(Request request){
+        try(var document=org.apache.pdfbox.Loader.loadPDF(pdf(request))){
+            var box=document.getPage(0).getMediaBox();
+            if((box.getWidth()*203/72)*(box.getHeight()*203/72)>16000000)throw new IllegalArgumentException("Preview is too tall. Select fewer copies or export PDF.");
+            ByteArrayOutputStream out=new ByteArrayOutputStream();ImageIO.write(new org.apache.pdfbox.rendering.PDFRenderer(document).renderImageWithDPI(0,203),"png",out);return out.toByteArray();
+        }catch(IOException e){throw new IllegalStateException("Unable to render thermal preview",e);}
+    }
+    byte[] thermal(List<Label> labels){
+        try(PDDocument document=new PDDocument()){
+            PDFont font=font(document);float width=80*72/25.4f,margin=4*72/25.4f,content=width-2*margin;
+            float height=55;
+            for(var label:labels)height+=label.copies()*(wrap(font,label.name(),10,content,100).size()*12+wrap(font,label.variant(),9,content,100).size()*11+wrap(font,"SKU: "+label.sku(),8,content,100).size()*10+91);
+            if(height>2000*72/25.4f)throw new IllegalArgumentException("Thermal roll exceeds 2000 mm. Print fewer copies per job.");
+            PDPage page=new PDPage(new PDRectangle(width,height));document.addPage(page);
+            try(PDPageContentStream stream=new PDPageContentStream(document,page)){
+                float y=height-20;text(stream,font,"EAST OF TOWN",11,margin,y);y-=15;text(stream,font,"Product barcodes",9,margin,y);y-=20;
+                for(var label:labels)for(int copy=0;copy<label.copies();copy++){
+                    for(String line:wrap(font,label.name(),10,content,100)){text(stream,font,line,10,margin,y);y-=12;}
+                    for(String line:wrap(font,label.variant(),9,content,100)){text(stream,font,line,9,margin,y);y-=11;}
+                    for(String line:wrap(font,"SKU: "+label.sku(),8,content,100)){text(stream,font,line,8,margin,y);y-=10;}
+                    text(stream,font,"INR "+java.math.BigDecimal.valueOf(label.price(),2).toPlainString(),10,margin,y);y-=47;
+                    boolean[] bars=barcode.modules(label.barcode());float module=content/(bars.length+20);
+                    for(int b=0;b<bars.length;b++)if(bars[b])stream.addRect(margin+(b+10)*module,y,module,35);stream.fill();y-=12;
+                    text(stream,font,label.barcode(),8,margin,y);y-=20;
+                    stream.moveTo(margin,y+8);stream.lineTo(width-margin,y+8);stream.setLineWidth(.3f);stream.stroke();y-=12;
+                }
+            }
+            ByteArrayOutputStream out=new ByteArrayOutputStream();document.save(out);return out.toByteArray();
+        }catch(IOException e){throw new IllegalStateException("Could not create thermal barcode document",e);}
+    }
     byte[] render(List<Label> labels,double widthMm,double heightMm){
         try(PDDocument document=new PDDocument()){
             PDFont font=font(document);float width=(float)(widthMm*72/25.4),height=(float)(heightMm*72/25.4);
@@ -86,10 +119,11 @@ public class LabelService {
     public Object print(Request request,String printer,boolean test){
         if(printer==null || printer.isBlank())throw new IllegalArgumentException("Select a printer");
         var selected=Arrays.stream(PrintServiceLookup.lookupPrintServices(null,null)).filter(p->p.getName().equals(printer)).findFirst().orElseThrow(()->new IllegalArgumentException("Printer unavailable. Save the labels as PDF instead."));
-        byte[] bytes=test?render(List.of(new Label("test","East of Town test label","TEST","M / Black","20000000000000",0,1)),request.widthMm(),request.heightMm()):pdf(request);
+        var testLabels=List.of(new Label("test","East of Town test label","TEST","M / Black","20000000000000",0,1));
+        byte[] bytes=test?(request.thermal()?thermal(testLabels):render(testLabels,request.widthMm(),request.heightMm())):pdf(request);
         try(PDDocument document=org.apache.pdfbox.Loader.loadPDF(bytes)){
             PrinterJob job=PrinterJob.getPrinterJob();job.setPrintService(selected);job.setJobName(test?"East of Town - TEST LABEL":"East of Town - barcode labels");
-            Paper paper=new Paper();double width=request.widthMm()*72/25.4,height=request.heightMm()*72/25.4;paper.setSize(width,height);paper.setImageableArea(0,0,width,height);PageFormat format=new PageFormat();format.setPaper(paper);
+            var box=document.getPage(0).getMediaBox();Paper paper=new Paper();double width=box.getWidth(),height=box.getHeight();paper.setSize(width,height);paper.setImageableArea(0,0,width,height);PageFormat format=new PageFormat();format.setPaper(paper);
             Book book=new Book();book.append(new PDFPrintable(document,Scaling.ACTUAL_SIZE),format,document.getNumberOfPages());job.setPageable(book);job.print();
             return Map.of("status","submitted","message","Job submitted to Windows print spooler. Check the printer for paper and output.");
         }catch(Exception e){throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,"Printing failed. Save the PDF and check the printer.");}

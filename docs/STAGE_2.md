@@ -1,5 +1,7 @@
 # Stage 2 — imports, stock ledger and labels (0.2.0)
 
+The barcode screen also supports [80 mm thermal roll printing](THERMAL_PRINTING.md) with automatic page height, a matching preview and PDF fallback. WhatsApp export remains deferred.
+
 ## Included
 
 The Excel import and barcode label screens are functional desktop workflows backed by SQLite. Inventory now provides administrator-only stock adjustments and movement history. Local owner setup/login and administrator/billing users were brought forward from Stage 5 so sensitive Stage 2 operations are authorized at the REST boundary. The per-launch local API token remains separate from user authorization. Accounts use BCrypt, sessions expire after eight hours or backend restart, and the login and recovery endpoints limit attempts. Administrator recovery uses a one-time recovery code; the code is shown once during setup or when an authenticated administrator rotates it from Users. There is no password recovery by email or cloud service.
