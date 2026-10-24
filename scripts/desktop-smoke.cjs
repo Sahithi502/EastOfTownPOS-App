@@ -64,6 +64,13 @@ async function screenshot(page,name){await page.screenshot({path:path.join(evide
   await page.getByRole('button',{name:'Save PDF',exact:true}).click();
   await expect(page.getByRole('status')).toContainText('PDF saved');
   assert.ok(fs.readFileSync(path.join(profile,'barcode-labels.pdf')).subarray(0,4).equals(Buffer.from('%PDF')));
+  await page.getByLabel('Print layout',{exact:true}).selectOption('thermal');
+  await page.getByLabel('Copies TEST-UI-M',{exact:true}).fill('2');
+  await page.getByRole('button',{name:'Preview labels',exact:true}).click();
+  await expect(page.getByRole('img',{name:/Code 128:/})).toBeVisible();
+  await page.getByRole('button',{name:'Save PDF',exact:true}).click();
+  await expect(page.getByRole('status')).toContainText('PDF saved');
+  await screenshot(page,'stage2-thermal-roll.png');
   await app.close();app=await launch();page=await app.firstWindow();await login(page);
   await page.getByRole('button',{name:'Inventory',exact:true}).click();
   await expect(page.getByRole('row').filter({hasText:'TEST-UI-M'}).getByText('9',{exact:true})).toBeVisible();
