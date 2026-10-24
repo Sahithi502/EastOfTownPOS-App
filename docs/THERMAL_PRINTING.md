@@ -8,10 +8,12 @@ Select a Windows thermal printer and use **Test print** to check alignment. Use 
 
 **Save preferences** stores the selected layout and printer for administrators. Individual label mode remains available with its existing fixed dimensions. Existing installations default to individual labels until thermal mode is selected. Stock, prices and barcode values are read without modification.
 
-For resource safety, thermal jobs are limited to 2000 mm in height; split longer jobs into fewer copies. Preview is rendered at 203 DPI and has a 16-million-pixel ceiling. Barcodes that cannot fit at the minimum supported module width are rejected rather than shrunk below the readability limit.
+For resource safety, thermal jobs are limited to 2000 mm in height; split longer jobs into fewer copies. Preview is rendered at 203 DPI and has a 16-million-pixel ceiling. Thermal barcodes that cannot fit horizontally at two dots per module (203 DPI) rotate 90 degrees and extend the roll height instead. The full readable barcode wraps beneath the symbol. This preserves long legacy barcodes without changing their database values. Individual fixed-size labels still reject barcodes that are too wide and direct the operator to thermal roll mode.
 
 Implementation: the request and settings use an optional `thermal` boolean (default false). The server builds one PDF with content-based height. Preview rasterizes this PDF; printing takes its actual page size. No schema migration or new dependency is required.
 
 Verification covers 80 mm page width, growing height, repeated content, pixel-identical PDF/preview rendering, authorized PDF access, excessive-height rejection, and the Electron layout selector/preview/PDF save workflow. See the PR and automated check results for execution evidence.
 
 Local checks on 24 October 2026: 27 Java tests passed, TypeScript/Vite build passed, API/restart smoke passed, and the Electron acceptance test saved a two-copy thermal PDF and verified restart persistence in an isolated profile. The thermal preview screenshot is in `docs/screenshots/stage2-thermal-roll.png`. No physical printer was used in these checks.
+
+Legacy-barcode follow-up: the width error previously named the SKU, which could be much shorter than the stored barcode. Thermal mode now rotates long symbols and includes their actual height in the roll layout. A new regression test renders both a long legacy code and the maximum supported 80-character code at 203 DPI, decodes the complete values, and verifies that database barcodes remain unchanged. All 28 Java tests passed for this follow-up; fixed-size label limits still apply.

@@ -31,7 +31,8 @@ public class LabelService {
             if(((Number)row.get("active")).intValue()!=1)throw new IllegalArgumentException("Activate the variant before printing labels: "+row.get("sku"));
             String code=row.get("barcode").toString();
             // Ten quiet modules at each end; never shrink below the minimum bar width.
-            if((request.thermal()?72:request.widthMm()-6)/(barcode.modules(code).length+20)<0.19)throw new IllegalArgumentException("Label is too narrow for barcode "+row.get("sku")+". Increase width; the stored barcode will be preserved.");
+            int modules=barcode.modules(code).length+20;
+            if(!request.thermal() && (request.widthMm()-6)/modules<0.19)throw new IllegalArgumentException("Individual label is too narrow for SKU "+row.get("sku")+". Choose Thermal POS roll — 80 mm × automatic height to fit long barcodes, or increase the individual label width. The stored barcode will be preserved.");
             labels.add(new Label(item.variantId(),row.get("name").toString(),row.get("sku").toString(),row.get("size")+" / "+row.get("colour"),code,((Number)row.get("selling_paise")).longValue(),item.copies()));
         }
         return labels;
@@ -63,7 +64,7 @@ public class LabelService {
         try(PDDocument document=new PDDocument()){
             PDFont font=font(document);float width=80*72/25.4f,margin=4*72/25.4f,content=width-2*margin;
             float height=55;
-            for(var label:labels)height+=label.copies()*(wrap(font,label.name(),10,content,100).size()*12+wrap(font,label.variant(),9,content,100).size()*11+wrap(font,"SKU: "+label.sku(),8,content,100).size()*10+91);
+            for(var label:labels)height+=label.copies()*(wrap(font,label.name(),10,content,100).size()*12+wrap(font,label.variant(),9,content,100).size()*11+wrap(font,"SKU: "+label.sku(),8,content,100).size()*10+thermalBarcodeHeight(label.barcode(),content)+44+wrap(font,label.barcode(),8,content,100).size()*10);
             if(height>2000*72/25.4f)throw new IllegalArgumentException("Thermal roll exceeds 2000 mm. Print fewer copies per job.");
             PDPage page=new PDPage(new PDRectangle(width,height));document.addPage(page);
             try(PDPageContentStream stream=new PDPageContentStream(document,page)){
@@ -72,16 +73,22 @@ public class LabelService {
                     for(String line:wrap(font,label.name(),10,content,100)){text(stream,font,line,10,margin,y);y-=12;}
                     for(String line:wrap(font,label.variant(),9,content,100)){text(stream,font,line,9,margin,y);y-=11;}
                     for(String line:wrap(font,"SKU: "+label.sku(),8,content,100)){text(stream,font,line,8,margin,y);y-=10;}
-                    text(stream,font,"INR "+java.math.BigDecimal.valueOf(label.price(),2).toPlainString(),10,margin,y);y-=47;
-                    boolean[] bars=barcode.modules(label.barcode());float module=content/(bars.length+20);
-                    for(int b=0;b<bars.length;b++)if(bars[b])stream.addRect(margin+(b+10)*module,y,module,35);stream.fill();y-=12;
-                    text(stream,font,label.barcode(),8,margin,y);y-=20;
-                    stream.moveTo(margin,y+8);stream.lineTo(width-margin,y+8);stream.setLineWidth(.3f);stream.stroke();y-=12;
+                    text(stream,font,"INR "+java.math.BigDecimal.valueOf(label.price(),2).toPlainString(),10,margin,y);y-=12;
+                    boolean[] bars=barcode.modules(label.barcode());boolean rotated=rotateThermal(label.barcode(),content);
+                    float barHeight=thermalBarcodeHeight(label.barcode(),content),module=rotated?2*72/203f:content/(bars.length+20);y-=barHeight;
+                    stream.saveGraphicsState();
+                    if(rotated)stream.transform(new org.apache.pdfbox.util.Matrix(0,1,-1,0,margin+35,y));
+                    for(int b=0;b<bars.length;b++)if(bars[b])stream.addRect(rotated?(b+10)*module:margin+(b+10)*module,rotated?0:y,module,35);
+                    stream.fill();stream.restoreGraphicsState();y-=12;
+                    for(String line:wrap(font,label.barcode(),8,content,100)){text(stream,font,line,8,margin,y);y-=10;}
+                    y-=8;stream.moveTo(margin,y);stream.lineTo(width-margin,y);stream.setLineWidth(.3f);stream.stroke();y-=12;
                 }
             }
             ByteArrayOutputStream out=new ByteArrayOutputStream();document.save(out);return out.toByteArray();
         }catch(IOException e){throw new IllegalStateException("Could not create thermal barcode document",e);}
     }
+    private boolean rotateThermal(String code,float contentWidth){return contentWidth/(barcode.modules(code).length+20)<2*72/203f;}
+    private float thermalBarcodeHeight(String code,float contentWidth){return rotateThermal(code,contentWidth)?(barcode.modules(code).length+20)*2*72/203f:35;}
     byte[] render(List<Label> labels,double widthMm,double heightMm){
         try(PDDocument document=new PDDocument()){
             PDFont font=font(document);float width=(float)(widthMm*72/25.4),height=(float)(heightMm*72/25.4);

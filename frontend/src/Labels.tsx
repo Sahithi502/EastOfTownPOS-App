@@ -45,7 +45,7 @@ export function Labels({admin}:{admin:boolean}){
     <button disabled={busy} onClick={async()=>{try{setPrinters(await api('GET','/labels/printers'));}catch(e){setError(String(e));}}}>Refresh printers</button>
    </div>
    <p className="footnote">Use matching stock in the printer driver and actual size / 100% scaling. Long legacy barcodes may require wider labels. A submitted job still requires checking the printer output.</p>
-   <p className="footnote">Thermal roll uses 80 mm paper with automatic height and 4 mm side margins. Preview, printing and PDF use the same layout.</p>
+   <p className="footnote">Thermal roll uses 80 mm paper with automatic height and 4 mm side margins. Long barcodes rotate vertically to stay readable. Preview, printing and PDF use the same layout.</p>
   </div>
   <form className="toolbar" onSubmit={e=>{e.preventDefault();load();}}>
    <input placeholder="Search product, SKU or barcode" aria-label="Label product search" value={search} onChange={e=>setSearch(e.target.value)}/><button>Search</button>
