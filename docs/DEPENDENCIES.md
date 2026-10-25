@@ -15,7 +15,7 @@ Installed versions are locked in package-lock.json and the Maven dependency grap
 | JUnit / Spring Boot Test | Maven managed | EPL-2.0 / Apache-2.0; testing |
 | Apache POI / OOXML | 6.0.0 | Apache-2.0; Excel template, parser and validation export |
 | ZXing core | 3.5.4 | Apache-2.0; Code 128 encoding/decoding tests |
-| Apache PDFBox | 3.0.8 | Apache-2.0; label PDF generation/rendering and Java print integration |
+| Apache PDFBox | 3.0.8 | Apache-2.0; label and receipt PDF generation/rendering and Java print integration |
 | Spring Security Crypto | 6.5.11 (Boot managed) | Apache-2.0; BCrypt password hashing |
 | Playwright Test | 1.64.1 | Apache-2.0; isolated Electron end-to-end tests, development only |
 
@@ -25,4 +25,4 @@ Audit on 22 October 2026: npm reports eight moderate advisories in the developme
 
 Stage 2 audit on 24 October 2026: `npm install --package-lock-only --ignore-scripts` reported zero vulnerabilities in the current registry audit. The historical Stage 1 result above is retained as earlier evidence. Java dependencies and the bundled runtime still require release security review. Retain upstream notices and licenses when distributing installers. Spring JCL supplies Commons Logging; the duplicate commons-logging dependency from PDFBox is excluded.
 
-POI 6.0.0 requires Java 17+ and is compatible with the project's Java 21 bytecode target. Official sources: [POI releases](https://poi.apache.org/download.cgi), [ZXing releases](https://github.com/zxing/zxing/releases), [PDFBox](https://pdfbox.apache.org/). System fonts used for PDF text are loaded from the OS and are not redistributed in this repository; review embedding rights for fonts installed by the operator. Receipts and 58/80 mm layouts are Stage 3 work; Stage 2 supports labels with driver calibration and PDF fallback. No paid cloud or signing service was added.
+POI 6.0.0 requires Java 17+ and is compatible with the project's Java 21 bytecode target. Official sources: [POI releases](https://poi.apache.org/download.cgi), [ZXing releases](https://github.com/zxing/zxing/releases), [PDFBox](https://pdfbox.apache.org/). System fonts used for PDF text are loaded from the OS and are not redistributed in this repository; review embedding rights for fonts installed by the operator. Stage 3 reuses PDFBox and Java printing for 58/80 mm receipts; Stage 2 supports labels with driver calibration and PDF fallback. No paid cloud or signing service was added.

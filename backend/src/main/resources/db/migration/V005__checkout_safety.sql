@@ -1,0 +1,18 @@
+CREATE TABLE customers (id TEXT PRIMARY KEY, name TEXT NOT NULL, mobile TEXT NOT NULL UNIQUE, email TEXT, created_at TEXT NOT NULL);
+ALTER TABLE invoices ADD COLUMN customer_id TEXT REFERENCES customers(id);
+ALTER TABLE invoices ADD COLUMN shop_snapshot TEXT NOT NULL DEFAULT '{}';
+ALTER TABLE invoices ADD COLUMN bill_discount_paise INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE invoice_items ADD COLUMN line_position INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE invoice_items ADD COLUMN category TEXT NOT NULL DEFAULT '';
+ALTER TABLE invoice_items ADD COLUMN barcode TEXT NOT NULL DEFAULT '';
+ALTER TABLE invoice_items ADD COLUMN cost_paise INTEGER;
+ALTER TABLE invoice_items ADD COLUMN tax_rate_bps INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE invoice_items ADD COLUMN bill_discount_paise INTEGER NOT NULL DEFAULT 0;
+CREATE TABLE checkout_requests (request_key TEXT PRIMARY KEY, request_hash TEXT NOT NULL, actor_id TEXT NOT NULL REFERENCES users(id), invoice_id TEXT NOT NULL UNIQUE REFERENCES invoices(id));
+CREATE TABLE variant_taxes (variant_id TEXT PRIMARY KEY REFERENCES product_variants(id), rate_bps INTEGER NOT NULL CHECK(rate_bps BETWEEN 0 AND 10000));
+CREATE INDEX invoice_customer ON invoices(customer_id);
+CREATE INDEX payment_invoice ON payments(invoice_id);
+CREATE INDEX item_invoice ON invoice_items(invoice_id);
+CREATE UNIQUE INDEX sale_once ON stock_movements(reference_id,variant_id) WHERE kind='SALE' AND reference_id IS NOT NULL;
+INSERT INTO application_settings VALUES ('invoice_sequence','0');
+INSERT INTO application_settings VALUES ('billing_config','{"shopName":"East of Town Men''s Fashion","address":"","phone":"","thankYou":"Thank you for shopping with us!","invoicePrefix":"EOT","billingDiscountBps":0,"receiptWidthMm":80,"printer":"","autoPrint":false}');

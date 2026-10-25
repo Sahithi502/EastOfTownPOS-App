@@ -78,7 +78,7 @@ Limits: first sheet only, 10 MB, 5,000 data rows, 64 columns. Blank rows are ski
 
 ## Persistence, tests and troubleshooting
 
-Business data is stored in the persistent application data directory described in README.md. Reopening the app keeps records. Do not delete the database to troubleshoot, copy only a live `.db` file without WAL, or enter real sales: backup/restore and billing are not available yet.
+Business data is stored in the persistent application data directory described in README.md. Reopening the app keeps records. Do not delete the database to troubleshoot, copy only a live `.db` file without WAL, or enter real sales: backup/restore is not available yet.
 
 For isolated desktop evaluation in Command Prompt:
 
@@ -91,4 +91,33 @@ That development-only override separates test stock from the normal profile. `np
 
 Missing `dist/index.html`: run `npm.cmd run build`. Missing backend JAR: build `backend` with Maven. Missing Electron: run `npm.cmd ci`. Locked JAR: close the running app before rebuilding. Startup timeout/service errors: inspect `backend.log` in the data folder, retain the database and contact the developer with the error. A missing bundled Java runtime is not required for development if JAVA_HOME/PATH Java is installed. Unsigned installers may be blocked by Smart App Control; trusted signing remains a release task.
 
-POS/receipts, customer histories, sales reports, returns and backup/restore remain Stages 3–6. See STAGES.md for the complete status index.
+Full customer histories, sales reports, returns and backup/restore remain Stages 4–6. POS billing and receipts are available in Stage 3. See STAGES.md for the complete status index.
+
+## Stage 3 — billing and receipts
+
+1. Sign in and choose **New bill**. Press F2 to focus **Barcode scan**. Scan a label and let the scanner send Enter. The exact size/colour variant is added; scanning it again increments that line. Product search also finds name, SKU or barcode; select a result to add it.
+2. Change quantity or **Remove** an item. Enter line discount as an amount for the whole line, and optionally a bill discount in INR. Administrators control billing-user discount limits in **Billing settings**. Default billing-user discount allowance is 0%.
+3. Use guest checkout, search name/mobile to select an existing customer, or **Create customer**. A duplicate mobile prompts selection of the existing customer.
+4. Press F9 or **Review bill and payment**. Review product/variant, unit price, quantities, allocated discounts, tax and final payable. The backend calculates these values. If catalog prices, tax or stock changed, correct/review again.
+5. Choose Cash, UPI, Card or Split payment. For split payment, enter the applied amounts; they must exactly equal payable. Optional cash tendered shows change; only the applied invoice amount is recorded as cash collection.
+6. After receiving payment, choose **Payment received — save invoice** once. The invoice number is assigned and stock/payments commit together. The app records your confirmation; it does not charge a card or verify UPI with a bank.
+7. The **Saved invoice** dialog supports **Save receipt PDF** and **Print / reprint receipt**, with 58 or 80 mm width and an installed printer. Automatic printing can be enabled in billing settings. A print error leaves the invoice saved; use PDF or reprint later.
+8. If checkout confirmation was interrupted, return to New bill and use **Check checkout status** or **Retry same checkout**. The saved request key prevents another stock deduction. If no sale was saved, the status check releases that request for a fresh review. Check status before starting another bill.
+
+![New bill](screenshots/stage3-new-bill.png)
+
+![Split payment review](screenshots/stage3-payment.png)
+
+### Previous invoices
+Choose **Invoice history**. Search by invoice/customer/mobile, date range or exact INR total. **View invoice** shows the historical product, prices, discounts, tax and payments; print again or save PDF. Catalog/customer corrections do not alter old receipts. The screen shows the most recent 500 matching invoices.
+
+![Invoice history](screenshots/stage3-invoice-history.png)
+
+### Billing settings (administrator)
+Enter shop address/contact/footer, numbering prefix, billing-user maximum combined discount, paper width and printer. **Save billing settings**, then **Test receipt printer**. Choose actual size / 100% scaling and matching paper in the Windows driver. Spool submission is not proof of physical output; check the paper.
+
+Tax defaults to 0%. In **Variant tax configuration**, find/select the exact SKU, enter your required percentage and save. Each variant can use a different rate. Tax is added to the discounted selling amount and rounded per line. Existing completed invoices keep their original tax.
+
+![Billing settings](screenshots/stage3-billing-settings.png)
+
+Full customer history/reports are Stage 4. Returns/cancellations/refunds and backup/restore remain Stage 5; completed invoices cannot currently be deleted or reversed. Keep evaluation/test records in the separate test profile until final release acceptance.

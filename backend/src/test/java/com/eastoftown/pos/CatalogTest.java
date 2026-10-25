@@ -22,7 +22,7 @@ class CatalogTest {
     @Test void initialCategoriesAndMigrationAreStable() throws Exception {
         assertEquals(8,repo.categories().size());
         new Migrations(repo.jdbc(),new org.springframework.transaction.support.TransactionTemplate(new org.springframework.jdbc.datasource.DataSourceTransactionManager(repo.jdbc().getDataSource()))).migrate();
-        assertEquals(3,repo.jdbc().queryForObject("SELECT COUNT(*) FROM schema_migrations",Integer.class));
+        assertEquals(5,repo.jdbc().queryForObject("SELECT COUNT(*) FROM schema_migrations",Integer.class));
     }
     @Test void createsPersistentVariantAndOpeningLedger() throws Exception {
         String id=service.save(null,input("PERSIST-1",7));

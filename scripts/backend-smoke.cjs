@@ -19,7 +19,7 @@ async function start(){
   const bundled=path.join(root,'runtime','bin','java.exe');
   const java=existsSync(bundled)?bundled:process.env.JAVA_HOME?path.join(process.env.JAVA_HOME,'bin','java.exe'):'java';
   console.log('Using Java: '+java);
-  processHandle=spawn(java,['-jar',path.join(root,'backend','target','pos-0.2.0.jar')],{windowsHide:true,stdio:['ignore','ignore','pipe'],env:{...process.env,EOT_DATA_DIR:directory,EOT_PORT:String(port),EOT_API_TOKEN:token}});
+  processHandle=spawn(java,['-jar',path.join(root,'backend','target','pos-0.3.0.jar')],{windowsHide:true,stdio:['ignore','ignore','pipe'],env:{...process.env,EOT_DATA_DIR:directory,EOT_PORT:String(port),EOT_API_TOKEN:token}});
   let failure;processHandle.on('error',e=>{failure=e;});
   processHandle.stderr.on('data',()=>{});
   for(let i=0;i<100;i++){if(failure)throw failure;if(processHandle.exitCode!==null)throw new Error('Backend exited during startup');try{if((await call('GET','/health')).status===200)return;}catch{}await new Promise(r=>setTimeout(r,200));}
@@ -60,6 +60,17 @@ async function stop(){if(processHandle&&processHandle.exitCode===null){await new
     assert.equal((await call('POST','/labels/preview',label)).status,200);
     assert.equal((await call('POST','/labels/print',{labels:label,printer:'TEST-MISSING-PRINTER',test:false})).status,400);
     console.log('PASS: authorization, validation, duplicate rollback, edit conflict, permanent barcode, exact prices, idempotent stock adjustments, label preview, missing printer, restart persistence and database health.');
+    const customer=await call('POST','/billing/customers',{name:'TEST ONLY API Customer',mobile:'9999912345',email:null});assert.equal(customer.status,200);
+    const cart={lines:[{variantId:created.value.id,quantity:2,discountPaise:100}],billDiscountPaise:50,customerId:customer.value.id};
+    const quote=await call('POST','/billing/quote',cart);assert.equal(quote.status,200);assert.equal(quote.value.totalPaise,179750);
+    const checkout={requestKey:require('node:crypto').randomUUID(),cart,quoteToken:quote.value.token,payments:[{method:'CASH',amountPaise:100000},{method:'UPI',amountPaise:79750}]};
+    const saved=await call('POST','/billing/checkout',checkout);assert.equal(saved.status,200);const invoiceId=saved.value.invoice.id;
+    assert.equal((await call('POST','/billing/checkout',checkout)).value.invoice.id,invoiceId);assert.equal((await call('GET','/variants')).value[0].current_stock,8);
+    await stop();session='';await start();session=(await call('POST','/auth/login',{username:'test-owner',password:'test-only-owner-password'})).value.session;
+    assert.equal((await call('POST','/billing/checkout',checkout)).value.invoice.id,invoiceId);assert.equal((await call('GET','/variants')).value[0].current_stock,8);
+    assert.equal((await call('GET','/billing/invoices?search=9999912345')).value.length,1);assert.equal((await call('GET','/billing/requests/'+checkout.requestKey)).value.found,true);
+    assert.equal((await call('POST','/billing/invoices/'+invoiceId+'/print',{widthMm:80,printer:'TEST-MISSING-PRINTER'})).status,400);
+    console.log('PASS: Stage 3 split checkout, customer purchase invoice, duplicate retry, printer failure and persistent invoice/payment/stock records across backend restart.');
     console.log('Isolated test database retained at '+directory);
   }finally{await stop();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
