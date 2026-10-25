@@ -47,7 +47,7 @@ app.whenReady().then(async () => {
     };
     ipcMain.handle('catalog:request',async(event,method,route,body)=>{
       caller(event);
-      const allowed=(method==='GET' && /^\/(health|categories|variants(?:\?search=[^#]*)?|auth\/status|imports\/history|stock\/movements\/[a-f0-9-]{36}|labels\/(printers|settings))$/.test(route)) || (method==='POST' && (/^\/auth\/(setup|login|logout|users|recover|recovery-code)$/.test(route) || ['/categories','/variants','/stock/adjustments','/labels/preview','/labels/print','/labels/settings'].includes(route) || /^\/imports\/[a-f0-9-]{36}\/(preview|commit)$/.test(route))) || (method==='PUT' && /^\/variants\/[a-f0-9-]{36}$/.test(route));
+      const allowed=(method==='GET' && /^\/(health|categories|variants(?:\?search=[^#]*)?|auth\/status|imports\/history|stock\/movements\/[a-f0-9-]{36}|labels\/(printers|settings)|billing\/invoices(?:\/[a-f0-9-]{36})?)$/.test(route)) || (method==='POST' && (/^\/auth\/(setup|login|logout|users|recover|recovery-code)$/.test(route) || ['/categories','/variants','/stock/adjustments','/labels/preview','/labels/print','/labels/settings','/billing/checkout'].includes(route) || /^\/imports\/[a-f0-9-]{36}\/(preview|commit)$/.test(route))) || (method==='PUT' && /^\/variants\/[a-f0-9-]{36}$/.test(route));
       if(!allowed) throw new Error('Unsupported operation');
       const result=await api(method,route,body);
       if(route==='/auth/login'){userSession=result.session;return {user:result.user};}
