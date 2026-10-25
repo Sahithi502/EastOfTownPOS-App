@@ -34,5 +34,5 @@ jobs:
         run: npm.cmd run build
       - name: API and restart verification
         run: npm.cmd run test:api
-      - name: Electron import, stock and labels acceptance
+      - name: Electron import, stock, labels and billing acceptance
         run: npm.cmd run test:desktop

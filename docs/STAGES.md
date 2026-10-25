@@ -4,7 +4,7 @@
 |---|---|---|
 | 1. Catalog and persistence | Delivered; historical installer acceptance limitations retained | ARCHITECTURE.md, TEST_RESULTS.md, original Git commit `2a6fffe` |
 | 2. Excel, stock, labels | Implemented in 0.2.0; hardware calibration pending | STAGE_2.md, STAGE_2_TEST_RESULTS.md, USER_MANUAL.md, screenshots/ |
-| 3. POS and receipts | Planned | ROADMAP.md; invoice/payment/stock transaction design in ARCHITECTURE.md |
+| 3. POS and receipts | Implemented in 0.3.0; hardware acceptance pending | STAGE_3.md, STAGE_3_TEST_RESULTS.md, SCHEMA.md, USER_MANUAL.md, screenshots/ |
 | 4. Customers and reports | Planned | ROADMAP.md; revenue/collections/profit reconciliation criteria |
 | 5. Returns, security, backup | Planned; local login pulled forward to protect Stage 2 writes | ROADMAP.md; account lifecycle and tested restore remain pending |
 | 6. Release and handover | Planned | ROADMAP.md; signing, offline, reboot, printer/scanner and clean-machine gates |
