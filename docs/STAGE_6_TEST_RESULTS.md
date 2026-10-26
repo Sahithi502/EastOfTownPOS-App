@@ -17,7 +17,7 @@ Version 0.6.0. Isolated temporary databases/profiles only. The existing shop dat
 | Directory package and bundled Java | PASS: 0.6.0 executable, bundled Java with system Java absent from PATH, fresh profile, renderer offline simulation, real checkout/stock/customer/backup and app restart. |
 | NSIS installer build | BLOCKED: generated uninstaller bootstrap could not execute (spawn UNKNOWN). Code Integrity events 3033/3077 confirm signing-policy rejection. The incomplete .exe was preserved as East of Town Setup 0.6.0.failed and must not be installed. |
 | Release hash/signature inspection | Manifest recorded. Application/helper are NotSigned; strict release check correctly fails because the unsigned helper is blocked. No production release is claimed. |
-| Windows CI | Pending PR validation. |
+| Windows CI | PASS: run 21 (40355709379), implementation commit 36f7cff. Backend, native attachment preparation, REST/forced interruption, all five desktop suites, verified runtime download, directory packaging, packaged restart acceptance, signature inspection and evidence upload all succeeded. |
 
 Upgrade evidence retained at `C:/Users/lokes/AppData/Local/Temp/eot-existing-upgrade-Sqzy6o/before-upgrade.db` and `eastoftown.db` in that directory. The originals contained five invoices; all original counts and full row fingerprints reconciled. New nullable phone fields do not rewrite legacy values.
 
@@ -26,6 +26,8 @@ REST crash-test database: `C:/Users/lokes/AppData/Local/Temp/eastoftown-api-test
 Stage 6 desktop final profile: `C:/Users/lokes/AppData/Local/Temp/eot-desktop-stage6-Auh4xJ`. It also verifies that a simulated Windows policy/helper failure leaves the invoice intact and exposes fallback controls. Screenshots are in docs/screenshots/stage6-*.png and were inspected for customer correction, line totals and sharing controls.
 
 Packaged acceptance profile: `C:/Users/lokes/AppData/Local/Temp/eot-acceptance-4a297eab-6faf-416d-ae3b-8e703d3e0bb3`. Package component hashes and actual signature status are retained in release/release-manifest.json. Windows Code Integrity events at 21:26–21:27 (3033/3077) identify ReceiptShare.exe and the generated installer bootstrap as violating this PC's signing policy. No policy was disabled or changed. A legitimate trusted signing setup and acceptance under the device's policy are required.
+
+CI evidence: [Windows run 21](https://github.com/Sahithi502/EastOfTownPOS-App/actions/runs/40355709379), job 121687476924, all steps successful. The stage6-verification artifact includes JUnit XML, Stage 6 screenshots, runtime provenance and package hashes/signature inspection. CI's Windows runner permitted the evaluation helper; this does not override the local PC's policy, prove trusted production signing, or complete shop-device acceptance. Final integration/merge status is recorded on [PR 10](https://github.com/Sahithi502/EastOfTownPOS-App/pull/10).
 
 ## Failures found and corrected
 
