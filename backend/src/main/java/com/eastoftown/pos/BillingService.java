@@ -15,10 +15,14 @@ import org.springframework.validation.annotation.Validated;
 @Service @Validated
 public class BillingService {
     public static final long MAX_MONEY=9_000_000_000_000L;
-    public record Line(@NotBlank String variantId,@Min(1) @Max(1000) int quantity,@Min(0) @Max(MAX_MONEY) long discountPaise) {}
+    public record Line(@NotBlank String variantId,@Min(1) @Max(1000) int quantity,@Min(0) @Max(MAX_MONEY) long discountPaise,String discountMode,@Min(0) @Max(10000) Integer percentageBps) {
+        public Line(String variantId,int quantity,long discountPaise){this(variantId,quantity,discountPaise,null,null);}
+    }
     public enum Method { CASH, UPI, CARD }
     public record Payment(@NotNull Method method,@Min(1) @Max(MAX_MONEY) long amountPaise) {}
-    public record Cart(@NotEmpty @Size(max=100) List<@NotNull @Valid Line> lines,@Min(0) @Max(MAX_MONEY) long billDiscountPaise,String customerId) {}
+    public record Cart(@NotEmpty @Size(max=100) List<@NotNull @Valid Line> lines,@Min(0) @Max(MAX_MONEY) long billDiscountPaise,String customerId,String discountMode,@Min(0) @Max(10000) Integer percentageBps) {
+        public Cart(List<Line> lines,long billDiscountPaise,String customerId){this(lines,billDiscountPaise,customerId,null,null);}
+    }
     public record Checkout(@NotNull UUID requestKey,@NotNull @Valid Cart cart,@NotBlank String quoteToken,@NotNull @Size(max=3) List<@NotNull @Valid Payment> payments) {}
     public record Config(@NotBlank @Size(max=120) String shopName,@NotNull @Size(max=300) String address,@NotNull @Size(max=40) String phone,
         @NotNull @Size(max=120) String thankYou,@Pattern(regexp="[A-Z0-9]{1,10}") @NotNull String invoicePrefix,
@@ -43,6 +47,16 @@ public class BillingService {
     public Object taxes(){return repo.jdbc().queryForList("SELECT * FROM variant_taxes");}
     @Transactional public Quote quote(@Valid Cart cart,AuthService.User user){return calculate(cart,user);}
     private Quote calculate(Cart cart,AuthService.User user){
+        Cart original=cart;
+        List<Line> normalized=new ArrayList<>();long afterLines=0;
+        for(var line:cart.lines()){
+            var prices=repo.jdbc().queryForList("SELECT selling_paise FROM product_variants WHERE id=?",line.variantId());
+            if(prices.isEmpty())throw new IllegalArgumentException("Product variant not found");
+            long gross=Math.multiplyExact(number(prices.getFirst(),"selling_paise"),line.quantity());
+            long value=discount(gross,line.discountPaise(),line.discountMode(),line.percentageBps());
+            normalized.add(new Line(line.variantId(),line.quantity(),value));afterLines=Math.addExact(afterLines,gross-value);
+        }
+        cart=new Cart(normalized,discount(afterLines,cart.billDiscountPaise(),cart.discountMode(),cart.percentageBps()),cart.customerId());
         Config config=config();List<Map<String,Object>> variants=new ArrayList<>();Set<String> seen=new HashSet<>();long subtotal=0,discount=cart.billDiscountPaise(),net=0;
         for(Line line:cart.lines()){
             if(!seen.add(line.variantId()))throw new IllegalArgumentException("Each variant must appear once; change its quantity instead");
@@ -75,7 +89,12 @@ public class BillingService {
             items.add(new Item(line.variantId(),v.get("name").toString(),v.get("category").toString(),v.get("sku").toString(),v.get("barcode").toString(),v.get("size").toString(),v.get("colour").toString(),unit,v.get("cost_paise")==null?null:number(v,"cost_paise"),line.quantity(),line.discountPaise(),shares[i],rate,tax,base+tax));
         }
         long total=Math.addExact(subtotal-discount,taxTotal);if(total>MAX_MONEY)throw new IllegalArgumentException("Total exceeds supported limit");
-        String token=hash(encode(items)+encode(cart)+encode(config));return new Quote(items,subtotal,discount,cart.billDiscountPaise(),taxTotal,total,token);
+        String token=hash(encode(items)+encode(original)+encode(config));return new Quote(items,subtotal,discount,cart.billDiscountPaise(),taxTotal,total,token);
+    }
+    static long discount(long base,long fixed,String mode,Integer bps){
+        if(mode==null || mode.equals("INR")){if(bps!=null && bps!=0)throw new IllegalArgumentException("Percentage is only allowed in percentage mode");return fixed;}
+        if(!mode.equals("PERCENT") || bps==null || bps<0 || bps>10000 || fixed!=0)throw new IllegalArgumentException("Choose INR or percentage (0–100), with only one discount value");
+        return BigDecimal.valueOf(base).multiply(BigDecimal.valueOf(bps)).divide(BigDecimal.valueOf(10000),0,RoundingMode.HALF_UP).longValueExact();
     }
     @Transactional public Object checkout(@Valid Checkout input,AuthService.User user){
         lock();String digest=hash(encode(input));var previous=repo.jdbc().queryForList("SELECT * FROM checkout_requests WHERE request_key=?",input.requestKey().toString());
@@ -91,6 +110,7 @@ public class BillingService {
         String id=UUID.randomUUID().toString(),now=timestamp(Instant.now());String customerId=input.cart().customerId();Map<String,Object> customer=customerId==null||customerId.isBlank()?Map.of():repo.jdbc().queryForMap("SELECT * FROM customers WHERE id=?",customerId);
         repo.jdbc().update("INSERT INTO invoices(id,invoice_number,status,subtotal_paise,discount_paise,tax_paise,total_paise,customer_name,customer_phone,created_by,created_at,customer_id,shop_snapshot,bill_discount_paise) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             id,nextNumber(),"COMPLETED",quote.subtotalPaise(),quote.discountPaise(),quote.taxPaise(),quote.totalPaise(),customer.get("name"),customer.get("mobile"),user.id(),now,customer.get("id"),encode(config()),quote.billDiscountPaise());
+        repo.jdbc().update("UPDATE invoices SET discount_input_json=? WHERE id=?",encode(input.cart()),id);
         int position=0;
         for(Item line:quote.items()){
             repo.jdbc().update("INSERT INTO invoice_items(id,invoice_id,variant_id,product_name,sku,size,colour,unit_price_paise,quantity,discount_paise,tax_paise,line_total_paise,category,barcode,cost_paise,tax_rate_bps,bill_discount_paise,line_position) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
@@ -113,7 +133,7 @@ public class BillingService {
         do{sequence=Math.addExact(sequence,1);candidate=prefix+String.format(Locale.ROOT,"%06d",sequence);}while(repo.jdbc().queryForObject("SELECT COUNT(*) FROM invoices WHERE invoice_number=?",Integer.class,candidate)>0);
         repo.jdbc().update("UPDATE application_settings SET value=? WHERE key='invoice_sequence'",Long.toString(sequence));return candidate;
     }
-    public Map<String,Object> invoice(String id){var rows=repo.jdbc().queryForList("SELECT * FROM invoices WHERE id=?",id);if(rows.isEmpty())throw new IllegalArgumentException("Invoice not found");return Map.of("invoice",rows.getFirst(),"items",repo.jdbc().queryForList("SELECT * FROM invoice_items WHERE invoice_id=? ORDER BY line_position,id",id),"payments",repo.jdbc().queryForList("SELECT * FROM payments WHERE invoice_id=? ORDER BY method",id));}
+    public Map<String,Object> invoice(String id){var rows=repo.jdbc().queryForList("SELECT * FROM invoices WHERE id=?",id);if(rows.isEmpty())throw new IllegalArgumentException("Invoice not found");return Map.of("invoice",rows.getFirst(),"items",repo.jdbc().queryForList("SELECT * FROM invoice_items WHERE invoice_id=? ORDER BY line_position,id",id),"payments",repo.jdbc().queryForList("SELECT * FROM payments WHERE invoice_id=? ORDER BY method",id),"reversals",repo.jdbc().queryForList("SELECT * FROM returns WHERE invoice_id=? ORDER BY created_at,id",id),"refunds",repo.jdbc().queryForList("SELECT f.* FROM refunds f JOIN returns r ON r.id=f.return_id WHERE r.invoice_id=? ORDER BY f.created_at,f.id",id));}
     public Object history(String search,LocalDate from,LocalDate to,Long amount){
         if(from!=null && to!=null && from.isAfter(to))throw new IllegalArgumentException("Start date must precede end date");
         String pattern="%"+search.replace("!","!!").replace("%","!%").replace("_","!_")+"%";

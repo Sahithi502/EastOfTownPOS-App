@@ -1,0 +1,14 @@
+ALTER TABLE invoices ADD COLUMN discount_input_json TEXT;
+CREATE TABLE returns (id TEXT PRIMARY KEY, invoice_id TEXT NOT NULL REFERENCES invoices(id), request_key TEXT NOT NULL UNIQUE, request_hash TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('RETURN','CANCELLATION')), reason TEXT NOT NULL, total_paise INTEGER NOT NULL CHECK(total_paise>=0), actor_id TEXT NOT NULL REFERENCES users(id), created_at TEXT NOT NULL);
+CREATE TABLE return_items (id TEXT PRIMARY KEY, return_id TEXT NOT NULL REFERENCES returns(id), invoice_item_id TEXT NOT NULL REFERENCES invoice_items(id), quantity INTEGER NOT NULL CHECK(quantity>0), restock INTEGER NOT NULL CHECK(restock IN (0,1)), gross_paise INTEGER NOT NULL, discount_paise INTEGER NOT NULL, tax_paise INTEGER NOT NULL, total_paise INTEGER NOT NULL CHECK(total_paise>=0), UNIQUE(return_id,invoice_item_id));
+CREATE TABLE refunds (id TEXT PRIMARY KEY, return_id TEXT NOT NULL REFERENCES returns(id), method TEXT NOT NULL CHECK(method IN ('CASH','UPI','CARD')), amount_paise INTEGER NOT NULL CHECK(amount_paise>0), created_at TEXT NOT NULL, UNIQUE(return_id,method));
+CREATE INDEX returns_invoice ON returns(invoice_id);
+CREATE INDEX returns_date ON returns(created_at);
+CREATE INDEX return_item_source ON return_items(invoice_item_id);
+CREATE TABLE expense_categories (id TEXT PRIMARY KEY, name TEXT NOT NULL COLLATE NOCASE UNIQUE);
+INSERT INTO expense_categories VALUES ('rent','Rent');
+INSERT INTO expense_categories VALUES ('salary','Salaries');
+INSERT INTO expense_categories VALUES ('utilities','Utilities');
+INSERT INTO expense_categories VALUES ('other','Other');
+CREATE TABLE expenses (id TEXT PRIMARY KEY, request_key TEXT NOT NULL UNIQUE, request_hash TEXT NOT NULL, category_id TEXT NOT NULL REFERENCES expense_categories(id), amount_paise INTEGER NOT NULL CHECK(amount_paise>0), effective_date TEXT NOT NULL, method TEXT NOT NULL CHECK(method IN ('CASH','UPI','CARD')), note TEXT NOT NULL, actor_id TEXT NOT NULL REFERENCES users(id), created_at TEXT NOT NULL, voided_at TEXT, void_reason TEXT, voided_by TEXT REFERENCES users(id));
+CREATE INDEX expenses_date ON expenses(effective_date);

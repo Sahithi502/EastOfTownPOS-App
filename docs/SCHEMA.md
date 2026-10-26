@@ -33,4 +33,14 @@ Indexes support category lookup, variant/time stock history, invoice date/custom
 
 V006 adds customer correction history/version/timestamps and customer/movement/payment indexes. There are 18 tables including schema_migrations. No dashboard/report summary tables duplicate sales or stock facts. ReportRepository derives data from ledger/snapshots; ReportService aggregates and applies Indian business dates. Customer correction commits atomically with audit/history while preserving original invoices.
 
-Returns/return_items and refund records are planned for Stage 5. Full customer history/reporting is implemented in Stage 4; net sales/customer/collection calculations must be extended to reversal records when that workflow is implemented.
+V007 implements Stage 5. There are now 23 tables including schema_migrations. It adds invoices.discount_input_json to retain the original INR/percentage input alongside calculated money snapshots.
+
+| Table | Purpose |
+|---|---|
+| returns | Original invoice FK, unique UUID request key, payload hash, RETURN/CANCELLATION, reason, refund total, administrator FK and time |
+| return_items | Original invoice-item FK, reversal FK, positive quantity, restock choice, exact allocated gross/discount/tax/refund snapshots; unique reversal/item pair |
+| refunds | Reversal FK, method, positive amount, timestamp; unique reversal/method |
+| expense_categories | Stable ID and case-insensitive unique name |
+| expenses | Unique request key/hash, category FK, paise, effective date, payment method, description, actor/time and optional void reason/actor/time |
+
+Returns never rewrite original invoice/items/payments. Positive stock movement reference is the return-item ID. Services serialize quantity checks and ledger/refund/stock writes in one transaction. Reporting derives signed reversal events and net customer amounts rather than storing another balance. Expense void preserves the original row. Backup configuration and last-success time use application_settings; staged/rescue backups are files outside the relational schema. See STAGE_5.md for rounding, cost reversal, restore and report semantics.

@@ -157,6 +157,54 @@ Inventory valuation always uses current stock and current cost. Profit estimates
 
 If a report exceeds 20,000 source records, choose a shorter period. Reports reject overly large selections instead of silently omitting records. Customer screen history remains fully paged. Return/refund reporting will be added with Stage 5; do not manually delete/change invoices in SQLite.
 
+## Stage 5: business controls (version 0.5.0)
+
+Sign in as Administrator. Open **Business controls**; its tabs are Returns, Expenses, Backup and restore, and User access. Scroll the sidebar to reach lower links and Sign out on shorter windows.
+
+### Discounts in percentage or rupees
+
+In **New bill**, each product line has an INR/% selector. Select the unit, then enter the discount value. Select **Bill discount mode** for the whole bill separately. Enter 5 for five percent, without a % sign; enter 100 in INR mode for ₹100. Bill percentage applies after line discounts. Review the server-calculated discount, tax and final total before receiving payment. Billing-user limits apply to the combined discount.
+
+### Return or cancel a purchase
+
+1. Open **Business controls → Returns**, search an invoice and select it.
+2. Choose Return selected units or Cancel entire invoice. Set quantities and enter a reason. Leave Restock checked only for goods actually returned to saleable stock. Cancellation requires all original units and no prior return.
+3. Click **Review reversal** and check the refund amount. Choose the method used to refund the customer.
+4. After giving the refund, click **Refund completed — save reversal** and confirm. The refund and selected stock movements save together. The original sale stays available.
+5. Review the saved reversal/history. If the app loses the response, use Retry saved reversal or Check reversal status; do not create another request for the same refund.
+
+![Return history](screenshots/stage5-return.png)
+
+### Record expenses and view monthly profit/loss
+
+1. Open **Business controls → Expenses**. Choose a category or add one. Enter amount, date, payment method and description, then **Save expense**.
+2. Record operating costs such as rent, salaries and electricity. Do not enter stock purchases here; product cost is already counted when sold.
+3. To correct an error, enter a void reason, click **Void expense**, confirm, then create a replacement. The original remains for audit.
+4. Open **Reports**, choose **Monthly net profit / loss**, select This month or a custom full-month range and click **View report**. Export Excel or PDF if required.
+5. Positive net profit/loss is profit; negative is loss. Blank/Unknown profit means historical product costs are incomplete. Enter reliable costs before selling. Results depend on recording all expenses; unrecorded costs are not included. Returns and expenses follow their displayed dates.
+
+![Monthly profit/loss](screenshots/stage5-net-profit.png)
+
+### Reset a billing-user password
+
+Open **Business controls → User access**. Select the billing user, enter a new password of at least 12 characters, and click **Reset billing password**. Communicate it directly to that user. Their existing sessions end; they sign in using the new password. Administrator password recovery still uses the saved one-time recovery code. Activate/deactivate or change roles here; your own administrator cannot be disabled/demoted. Create new accounts from **Users**.
+
+### Prepare a WhatsApp receipt
+
+Open a saved invoice after checkout, from Invoice history, or from customer history. Under **Share purchase receipt**, enter the full phone number including country code, digits only (for example country code 91 followed by the customer's Indian number). Verify the recipient agrees. Select PDF or PNG and click **Prepare WhatsApp receipt**. Confirm the recipient, choose where to save the file, then attach it to the opened WhatsApp chat, review and send. The app does not automatically attach/send or confirm delivery. Long receipts need PDF. Internet and your WhatsApp sign-in are required for sending; billing and local PDF creation work offline.
+
+![Receipt preparation](screenshots/stage5-receipt-sharing.png)
+
+### Back up and restore
+
+Open **Business controls → Backup and restore**. Choose a backup folder, set an interval in hours (for example 24 for daily while the app is open; 0 disables it), and retain at least two copies. Click **Save backup settings**, then **Back up now** and confirm a verified-backup path appears. Use an external secure location for protection against disk failure. Scheduled checks run while the app is open, not when the PC is off.
+
+For restore, choose **Select backup and prepare restore**, select the .db backup and confirm replacement of current data. The service validates it and preserves a backup. Close and restart the application when instructed. New business writes are blocked until restart or Cancel pending restore. Sign in with credentials from the backup. Check invoices, payments/refunds, expenses, customer totals and stock. A rescue-*.db copy of pre-restore records remains in the data folder. Never delete your only good database or edit migration hashes to force a restore. Detailed recovery steps are in STAGE_5.md.
+
+**Export database JSON** is for future migration and includes account password hashes/customer information; keep it and all backups securely. It is not an automatic cloud upload.
+
+![Backup settings](screenshots/stage5-backup.png)
+
 ![Report preview and exports](screenshots/stage4-reports.png)
 
 ### Requests retained for later approval

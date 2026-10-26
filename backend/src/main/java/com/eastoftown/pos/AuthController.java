@@ -15,4 +15,8 @@ public class AuthController {
     @PostMapping("/users") public Object create(@RequestBody NewUser input){return auth.create(input.username(),input.password(),input.role(),auth.admin().id());}
     @PostMapping("/recover") public Object recover(@RequestBody Recovery input){return auth.recover(input.username(),input.recoveryCode(),input.newPassword());}
     @PostMapping("/recovery-code") public Object rotateRecoveryCode(){return Map.of("recoveryCode",auth.rotateRecoveryCode());}
+    public record Reset(String password){} public record State(String role,boolean active){}
+    @GetMapping("/users") public Object users(){return auth.users();}
+    @PostMapping("/users/{id}/reset") public Object reset(@PathVariable String id,@RequestBody Reset input){return auth.resetBilling(id,input.password());}
+    @PostMapping("/users/{id}/state") public Object state(@PathVariable String id,@RequestBody State input){return auth.userState(id,input.role(),input.active());}
 }
