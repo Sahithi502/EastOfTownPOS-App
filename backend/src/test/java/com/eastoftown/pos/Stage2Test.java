@@ -130,7 +130,7 @@ class Stage2Test {
     }
     @Test void code128RoundTripsAndPdfHasCorrectPhysicalPages()throws Exception{
         String id=variant("LABELS",2);String code=repo.variants("LABELS").getFirst().get("barcode").toString();var image=javax.imageio.ImageIO.read(new ByteArrayInputStream(labels.png(code)));
-        var source=new RGBLuminanceSource(image.getWidth(),image.getHeight(),image.getRGB(0,0,image.getWidth(),image.getHeight(),null,0,image.getWidth()));assertEquals(code,new MultiFormatReader().decode(new BinaryBitmap(new HybridBinarizer(source))).getText());
+        var source=new RGBLuminanceSource(image.getWidth(),image.getHeight(),image.getRGB(0,0,image.getWidth(),image.getHeight(),null,0,image.getWidth()));assertEquals(code,new com.google.zxing.oned.Code128Reader().decode(new BinaryBitmap(new HybridBinarizer(source))).getText());
         var request=new LabelService.Request(List.of(new LabelService.Item(id,2)),50,30);
         try(var pdf=Loader.loadPDF(labels.pdf(request))){assertEquals(2,pdf.getNumberOfPages());assertEquals(50*72/25.4,pdf.getPage(0).getMediaBox().getWidth(),0.1);var rendered=new PDFRenderer(pdf).renderImageWithDPI(0,203);assertTrue(rendered.getWidth()>300);}
         assertThrows(IllegalArgumentException.class,()->labels.pdf(new LabelService.Request(List.of(new LabelService.Item(id,201)),80,40)));

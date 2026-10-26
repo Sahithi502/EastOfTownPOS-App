@@ -25,7 +25,8 @@ public class Migrations {
         String hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(sql.getBytes(StandardCharsets.UTF_8)));
         var existing = db.queryForList("SELECT checksum FROM schema_migrations WHERE version=?", String.class,version);
         if (!existing.isEmpty()) {
-            if (!existing.getFirst().equals(hash)) throw new IllegalStateException("Migration checksum mismatch; restore original migration");
+            if (!existing.getFirst().equals(hash) && !releasedStage3Checksum(version,existing.getFirst(),hash))
+                throw new IllegalStateException("Migration checksum mismatch for "+migrations[index]+"; restore the original migration or install a compatible application release");
             continue;
         }
         tx.executeWithoutResult(status -> {
@@ -33,5 +34,12 @@ public class Migrations {
             db.update("INSERT INTO schema_migrations(version,checksum) VALUES (?,?)", version,hash);
         });
         }
+    }
+    // The shipped 0.3.0 JAR had a final CRLF in V005; the committed file has LF.
+    // Accept only this verified pair. Keep the saved hash and all other checks strict.
+    private static boolean releasedStage3Checksum(int version,String stored,String current){
+        return version==5
+            && stored.equals("11a29fe62f4b0dc74be40cc87075c75064eaae011f9e3c498a551ff13a0eb710")
+            && current.equals("5e991ab6b0ddf97a31afbeddb7ff62a25008957ba6e23b989332861c17a8684c");
     }
 }

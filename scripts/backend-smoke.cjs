@@ -19,7 +19,7 @@ async function start(){
   const bundled=path.join(root,'runtime','bin','java.exe');
   const java=existsSync(bundled)?bundled:process.env.JAVA_HOME?path.join(process.env.JAVA_HOME,'bin','java.exe'):'java';
   console.log('Using Java: '+java);
-  processHandle=spawn(java,['-jar',path.join(root,'backend','target','pos-0.4.0.jar')],{windowsHide:true,stdio:['ignore','ignore','pipe'],env:{...process.env,EOT_DATA_DIR:directory,EOT_PORT:String(port),EOT_API_TOKEN:token}});
+  processHandle=spawn(java,['-jar',path.join(root,'backend','target','pos-0.4.1.jar')],{windowsHide:true,stdio:['ignore','ignore','pipe'],env:{...process.env,EOT_DATA_DIR:directory,EOT_PORT:String(port),EOT_API_TOKEN:token}});
   let failure;processHandle.on('error',e=>{failure=e;});
   processHandle.stderr.on('data',()=>{});
   for(let i=0;i<100;i++){if(failure)throw failure;if(processHandle.exitCode!==null)throw new Error('Backend exited during startup');try{if((await call('GET','/health')).status===200)return;}catch{}await new Promise(r=>setTimeout(r,200));}

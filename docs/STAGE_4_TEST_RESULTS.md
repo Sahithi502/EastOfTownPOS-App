@@ -1,5 +1,7 @@
 # Stage 4 verification — 26 October 2026
 
+0.4.1 adds three released-database migration regressions (63 total backend tests). The original 0.4.0 tests below used fresh/canonical migration files and missed the final-line CRLF checksum in the released Stage 3 JAR. See UPGRADE_0_4_1.md for the cause, restricted compatibility check and existing-database copy validation procedure.
+
 Test databases and Electron profiles are temporary and separate from production.
 
 Verified locally: `mvn -B package` passes all 60 tests (7 catalog, 21 Stage 2, 16 billing, 16 reports); `npm.cmd run build` passes; `npm.cmd run test:api` passes with real backend restart; Stage 2/3 Electron regressions pass; `npm.cmd run test:reports-desktop` passes the Stage 4 workflow. The GitHub Windows PR check runs all three desktop suites together and is the authoritative CI gate before merge.
