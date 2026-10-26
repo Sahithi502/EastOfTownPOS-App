@@ -1,6 +1,8 @@
 # East of Town Men's Fashion
 
-Offline Windows retail application, implemented in the requested stages. **Current milestone: Stage 4, version 0.4.0 — customer history, dashboard and Excel/PDF business reports.**
+Offline Windows retail application, implemented in the requested stages. **Current milestone: Stage 4, version 0.4.1 — customer history, dashboard and Excel/PDF business reports.**
+
+Version 0.4.1 fixes startup for the released Stage 3 migration checksum without resetting data. See [upgrade diagnosis and validation](docs/UPGRADE_0_4_1.md). A restart alone cannot fix version 0.4.0's checksum mismatch; use the corrected build.
 
 Implemented: persistent catalog/categories/variants, exact integer-paise prices, stock ledger and history, administrator/billing login, audited stock adjustments, Excel template/upload/mapping/validation/confirmation/history, error workbook export, Code 128 label preview/PDF/Windows print submission, configurable dimensions/printer and test printing. No business demo data or default credentials are seeded.
 

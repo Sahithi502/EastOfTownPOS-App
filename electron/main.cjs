@@ -16,7 +16,7 @@ app.whenReady().then(async () => {
   try {
     port = await new Promise((resolve,reject) => { const s=net.createServer(); s.on('error',reject); s.listen(0,'127.0.0.1',()=>{const p=s.address().port;s.close(()=>resolve(p));}); });
     const base = app.isPackaged ? process.resourcesPath : app.getAppPath();
-    const jar = app.isPackaged ? path.join(base,'backend','pos.jar') : path.join(base,'backend','target','pos-0.4.0.jar');
+    const jar = app.isPackaged ? path.join(base,'backend','pos.jar') : path.join(base,'backend','target','pos-0.4.1.jar');
     const bundledJava=path.join(base,'runtime','bin','java.exe');
     const java = app.isPackaged || fs.existsSync(bundledJava) ? bundledJava : process.env.JAVA_HOME ? path.join(process.env.JAVA_HOME,'bin','java.exe') : 'java';
     if(!fs.existsSync(path.join(app.getAppPath(),'dist','index.html'))) throw new Error('Build the frontend first: npm.cmd run build, then npm.cmd start');

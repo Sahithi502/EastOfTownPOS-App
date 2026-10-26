@@ -2,6 +2,8 @@
 
 Persistent SQLite location and safe shutdown instructions are in README.md. Versioned migrations live in backend/src/main/resources/db/migration. Applied migration files are checksummed and must remain unchanged; extend the schema with a new migration.
 
+0.4.1 recognizes the one verified released V005 checksum whose final line used CRLF rather than LF. It retains that saved checksum and skips the already applied migration; every other mismatch still blocks startup. See UPGRADE_0_4_1.md. SQL files V001–V006 are unchanged by this compatibility fix.
+
 | Table | Purpose / ownership |
 |---|---|
 | categories | Unique category name; shared by products |
