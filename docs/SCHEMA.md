@@ -1,4 +1,4 @@
-# Database schema through Stage 3
+# Database schema through Stage 4
 
 Persistent SQLite location and safe shutdown instructions are in README.md. Versioned migrations live in backend/src/main/resources/db/migration. Applied migration files are checksummed and must remain unchanged; extend the schema with a new migration.
 
@@ -14,7 +14,8 @@ Persistent SQLite location and safe shutdown instructions are in README.md. Vers
 | stock_adjustments | Authorized reason/date/delta, actor and unique retry key; references one adjustment movement |
 | import_batches | Uploaded workbook JSON, mapping/policy, preview token/state/revision |
 | import_history | One committed summary per batch, counts and actor/time |
-| customers | Customer UUID/name/unique mobile/optional email/registration time |
+| customers | Customer UUID/name/unique mobile/optional email/registration time, optimistic correction version and updated timestamp |
+| customer_changes | Audited before/after master snapshots, customer/user FKs and time; administrator-only read |
 | invoices | Unique number, status, exact totals, operator/time, optional customer FK plus customer and shop snapshots |
 | invoice_items | Invoice/variant FKs, original description/category/SKU/barcode/size/colour/price/cost/quantity/discount/tax/line total and line position |
 | payments | Invoice FK, CASH/UPI/CARD method, applied positive amount in paise and timestamp |
@@ -28,4 +29,6 @@ Invoice subtotal is pre-discount, pre-tax. Invoice discount includes line and bi
 
 Indexes support category lookup, variant/time stock history, invoice date/customer, invoice items/payments and sold variant. Foreign keys are enabled per connection. SQLite-specific PRAGMA/migration/backup operations stay in infrastructure; billing arithmetic uses Java values. A PostgreSQL cutover must carry forward all UUIDs, invoice numbering, checkout keys/hashes, permanent barcodes, snapshots and movement/audit history. Reconcile all counts, stock balances, totals and payments; never migrate just mutable catalog values.
 
-Returns/return_items and refund records are planned for Stage 5. Full customer history/reporting is Stage 4.
+V006 adds customer correction history/version/timestamps and customer/movement/payment indexes. There are 18 tables including schema_migrations. No dashboard/report summary tables duplicate sales or stock facts. ReportRepository derives data from ledger/snapshots; ReportService aggregates and applies Indian business dates. Customer correction commits atomically with audit/history while preserving original invoices.
+
+Returns/return_items and refund records are planned for Stage 5. Full customer history/reporting is implemented in Stage 4; net sales/customer/collection calculations must be extended to reversal records when that workflow is implemented.

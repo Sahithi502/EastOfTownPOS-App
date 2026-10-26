@@ -18,7 +18,7 @@ public class Migrations {
         db.execute("PRAGMA journal_mode=WAL");
         db.execute("PRAGMA busy_timeout=5000");
         db.execute("CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY, checksum TEXT NOT NULL, applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)");
-        String[] migrations={"V001__catalog.sql","V002__imports_stock_users.sql","V003__administrator_recovery.sql","V004__billing.sql","V005__checkout_safety.sql"};
+        String[] migrations={"V001__catalog.sql","V002__imports_stock_users.sql","V003__administrator_recovery.sql","V004__billing.sql","V005__checkout_safety.sql","V006__customer_reports.sql"};
         for(int index=0;index<migrations.length;index++) {
         final int version=index+1;
         String sql = new ClassPathResource("db/migration/"+migrations[index]).getContentAsString(StandardCharsets.UTF_8);

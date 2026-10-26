@@ -126,7 +126,7 @@ public class BillingService {
     @Transactional public Object customer(@Valid CustomerInput input,String actor){lock();
         if(input.name().trim().isEmpty())throw new IllegalArgumentException("Enter a customer name");
         if(repo.jdbc().queryForObject("SELECT COUNT(*) FROM customers WHERE mobile=?",Integer.class,input.mobile())>0)throw new IllegalArgumentException("A customer with this mobile already exists. Search and select that customer.");
-        String id=UUID.randomUUID().toString();repo.jdbc().update("INSERT INTO customers VALUES (?,?,?,?,?)",id,input.name().trim(),input.mobile(),input.email(),Instant.now().toString());audit("CUSTOMER_CREATED",id,actor);return repo.jdbc().queryForMap("SELECT id,name,mobile,email FROM customers WHERE id=?",id);
+        String id=UUID.randomUUID().toString();String now=timestamp(Instant.now());repo.jdbc().update("INSERT INTO customers(id,name,mobile,email,created_at,updated_at) VALUES (?,?,?,?,?,?)",id,input.name().trim(),input.mobile(),input.email(),now,now);audit("CUSTOMER_CREATED",id,actor);return repo.jdbc().queryForMap("SELECT id,name,mobile,email FROM customers WHERE id=?",id);
     }
     void audit(String action,String id,String actor){repo.jdbc().update("INSERT INTO audit_logs VALUES (?,?,?,?,?)",UUID.randomUUID().toString(),action,id,actor,Instant.now().toString());}
     static String timestamp(Instant instant){return new java.time.format.DateTimeFormatterBuilder().appendInstant(9).toFormatter().format(instant);}

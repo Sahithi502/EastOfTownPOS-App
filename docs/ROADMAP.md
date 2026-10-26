@@ -9,8 +9,8 @@ POI template/upload/mapping/preview, row errors and correction export, atomic co
 ## Stage 3 — implemented in 0.3.0; hardware acceptance pending
 POS scan/keyboard workflow; BigDecimal discount/tax policy; split payments; unique checkout keys; transactional stock guard; invoice sequence/snapshots; thermal PDF and print/reprint error handling. Verified simultaneous/repeated checkout, insufficient stock, payment reconciliation, transaction rollback and interrupted confirmation recovery. Basic customer matching/creation is included for billing; full customer history remains Stage 4. See STAGE_3.md and STAGE_3_TEST_RESULTS.md.
 
-## Stage 4 — planned
-Customer matching/corrections and history; date/timezone-aware dashboard and reports using committed records; POI/PDF report export; distinguish collections, revenue and estimated profit. Reconcile every aggregate to fixtures in isolated test databases.
+## Stage 4 — implemented in 0.4.0
+Customer matching/audited corrections, paged purchase history and original receipt details; Indian date/timezone-aware dashboard and sales/payment/stock/customer/valuation/profit reports using committed records; POI/PDF exports. Distinguishes collections, revenue, tax, inventory value and estimated gross profit, with missing-cost coverage. See STAGE_4.md and STAGE_4_TEST_RESULTS.md. Returns/refund reports follow Stage 5's reversal ledger.
 
 ## Stage 5 — planned
 Extend Stage 2 BCrypt users/permissions with account lifecycle/recovery and finer permissions; partial returns/refunds/cancellation ledger; verified consistent backups, retention, test restore and export utility. Test repeated/remainder returns, account changes and restored counts/money totals. The requested administrator reset of billing-user passwords and WhatsApp purchase receipts remain deferred until explicit approval in this stage.
