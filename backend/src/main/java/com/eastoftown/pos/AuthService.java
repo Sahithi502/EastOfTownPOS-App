@@ -86,11 +86,29 @@ public class AuthService {
         if(password==null || password.length()<12 || password.getBytes(java.nio.charset.StandardCharsets.UTF_8).length>72) throw new IllegalArgumentException("Password must contain at least 12 characters and at most 72 UTF-8 bytes");
     }
     private String generateRecoveryCode(){byte[] bytes=new byte[18];new SecureRandom().nextBytes(bytes);return "EOT-"+HexFormat.of().formatHex(bytes).toUpperCase(Locale.ROOT);}
+    public Object users(){admin();return repo.jdbc().queryForList("SELECT id,username,role,active,created_at FROM users ORDER BY username");}
+    @Transactional public synchronized Object resetBilling(String id,String password){
+        User owner=admin();validatePassword(password);repo.jdbc().update("UPDATE application_settings SET value=value WHERE key='write_lock'");
+        if(repo.jdbc().update("UPDATE users SET password_hash=? WHERE id=? AND role='BILLING'",encoder.encode(password),id)!=1)throw new IllegalArgumentException("Select a billing user; administrators use their recovery code");
+        sessions.entrySet().removeIf(e->e.getValue().user().id().equals(id));
+        repo.jdbc().update("INSERT INTO audit_logs VALUES (?,?,?,?,?)",UUID.randomUUID().toString(),"BILLING_PASSWORD_RESET",id,owner.id(),Instant.now().toString());return Map.of("ok",true);
+    }
+    @Transactional public synchronized Object userState(String id,String role,boolean active){
+        User owner=admin();if(!Set.of("ADMIN","BILLING").contains(role))throw new IllegalArgumentException("Invalid role");
+        repo.jdbc().update("UPDATE application_settings SET value=value WHERE key='write_lock'");
+        var old=repo.jdbc().queryForMap("SELECT role,active FROM users WHERE id=?",id);
+        if(id.equals(owner.id()) && (!active || !role.equals("ADMIN")))throw new IllegalArgumentException("You cannot disable or demote your own administrator account");
+        if(old.get("role").equals("ADMIN") && ((Number)old.get("active")).intValue()==1 && (!active || !role.equals("ADMIN")) && repo.jdbc().queryForObject("SELECT COUNT(*) FROM users WHERE role='ADMIN' AND active=1",Integer.class)<=1)throw new IllegalArgumentException("Keep at least one active administrator");
+        repo.jdbc().update("UPDATE users SET role=?,active=? WHERE id=?",role,active?1:0,id);sessions.entrySet().removeIf(e->e.getValue().user().id().equals(id));
+        repo.jdbc().update("INSERT INTO audit_logs VALUES (?,?,?,?,?)",UUID.randomUUID().toString(),"USER_STATE_CHANGED_"+role+"_"+(active?"ACTIVE":"INACTIVE"),id,owner.id(),Instant.now().toString());return Map.of("ok",true);
+    }
     public User current(){
         var attributes=RequestContextHolder.getRequestAttributes();
         String key=attributes instanceof ServletRequestAttributes a?a.getRequest().getHeader("X-EOT-Session"):null;
         Session session=key==null?null:sessions.get(key);
         if(session==null || session.expires().isBefore(Instant.now())) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Please sign in again");
+        var rows=repo.jdbc().queryForList("SELECT role FROM users WHERE id=? AND active=1",session.user().id());
+        if(rows.isEmpty() || !rows.getFirst().get("role").equals(session.user().role())){sessions.remove(key);throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Account changed. Sign in again");}
         return session.user();
     }
     public User admin(){User user=current();if(!user.role().equals("ADMIN")) throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Administrator permission required");return user;}

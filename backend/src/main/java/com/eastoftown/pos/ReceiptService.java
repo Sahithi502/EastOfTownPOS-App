@@ -43,6 +43,9 @@ public class ReceiptService {
         source.add("TOTAL: "+money(invoice.get("total_paise")));
         for(var payment:(List<Map<String,Object>>)data.get("payments"))source.add(payment.get("method")+": "+money(payment.get("amount_paise")));
         source.add(shop.getOrDefault("thankYou","Thank you!").toString());
+        for(var reversal:(List<Map<String,Object>>)data.get("reversals"))source.add("Recorded "+reversal.get("kind")+": "+money(reversal.get("total_paise"))+" | "+reversal.get("reason"));
+        for(var refund:(List<Map<String,Object>>)data.get("refunds"))source.add("Refund "+refund.get("method")+": "+money(refund.get("amount_paise")));
+        if(!((List<?>)data.get("reversals")).isEmpty())source.add("Original sale totals above are preserved.");
         return render(source,widthMm);
     }
     byte[] render(List<String> source,int widthMm){

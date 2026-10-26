@@ -1,5 +1,4 @@
 # Dependencies and notices
-
 Installed versions are locked in package-lock.json and the Maven dependency graph. Recheck security advisories and supported release lines before a production release.
 
 | Component | Version | License / purpose |
@@ -26,3 +25,5 @@ Audit on 22 October 2026: npm reports eight moderate advisories in the developme
 Stage 2 audit on 24 October 2026: `npm install --package-lock-only --ignore-scripts` reported zero vulnerabilities in the current registry audit. The historical Stage 1 result above is retained as earlier evidence. Java dependencies and the bundled runtime still require release security review. Retain upstream notices and licenses when distributing installers. Spring JCL supplies Commons Logging; the duplicate commons-logging dependency from PDFBox is excluded.
 
 POI 6.0.0 requires Java 17+ and is compatible with the project's Java 21 bytecode target. Official sources: [POI releases](https://poi.apache.org/download.cgi), [ZXing releases](https://github.com/zxing/zxing/releases), [PDFBox](https://pdfbox.apache.org/). System fonts used for PDF text are loaded from the OS and are not redistributed in this repository; review embedding rights for fonts installed by the operator. Stage 3 reuses PDFBox and Java printing for 58/80 mm receipts; Stage 2 supports labels with driver calibration and PDF fallback. Stage 4 reuses POI/PDFBox for report exports with no new dependencies or version changes. No paid cloud or signing service was added.
+
+Stage 5 (0.5.0) adds no third-party dependencies. Backup operations use the existing Xerial SQLite JDBC driver and Java SQL/filesystem APIs; PNG uses existing PDFBox rendering and Java ImageIO. WhatsApp uses the documented click-to-chat link through Electron shell.openExternal; no WhatsApp SDK, paid service, credential storage or automated messaging is included. Existing dependency license notices remain applicable.

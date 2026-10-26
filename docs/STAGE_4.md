@@ -1,5 +1,4 @@
 # Stage 4 — customers, dashboard and reports (0.4.0)
-
 ## Delivered scope
 
 Customers can be searched by literal name/mobile, created with a unique mobile, checked for possible same-name duplicates, and viewed with lifetime completed purchase count, amount including tax, last purchase and last invoice. Customers and invoices are paged in groups of 50; history does not stop at the invoice screen's 500-row limit. Each purchase opens the original receipt with products, quantities, saved prices, both discounts, tax and applied payments.
@@ -54,3 +53,5 @@ V001–V005 are unchanged. V006 adds customer correction version/timestamps, cus
 ## Deferred requests retained
 
 Administrator reset of billing-user passwords and WhatsApp receipt sharing remain for explicit approval in Stage 5. Barcode orientation/size remains unchanged pending the shopkeeper discussion. The existing Stage 3 UI accepts fixed INR discounts; earlier chat statements claiming percentage input already existed were incorrect. A percentage/fixed-rupee selector remains a separate approved future billing enhancement and is not included in Stage 4.
+
+Stage 5 update (0.5.0): the owner approved and Stage 5 implements administrator billing-user password reset, WhatsApp receipt preparation, percentage/INR discount selectors and operating-expense monthly net profit/loss. Reversal/refund-aware reporting now extends these Stage 4 definitions. The historical scope above is retained for the 0.4.0 release; see STAGE_5.md for current behavior. Barcode orientation/size is unchanged.
