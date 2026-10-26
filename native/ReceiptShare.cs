@@ -41,7 +41,7 @@ internal static class ReceiptShare {
                 close.Click += (s,e) => form.Close(); form.Controls.Add(close);
                 DataTransferManager manager = null;
                 bool attached = false;
-                var timer = new Timer { Interval = args[0]=="--self-test" ? 6000 : 300000 };
+                var timer = new Timer { Interval = args[0]=="--self-test" ? 15000 : 300000 };
                 timer.Tick += (s,e) => { timer.Stop(); form.Close(); };
                 form.Shown += (s,e) => {
                     try {

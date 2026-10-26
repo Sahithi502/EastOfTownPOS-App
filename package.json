@@ -11,7 +11,7 @@
     "dev": "vite --config frontend/vite.config.ts",
     "build:share": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build-share.ps1",
     "test:stage6-desktop": "node scripts/release-desktop.cjs",
-    "test:share": "node scripts/share-smoke.cjs",
+    "test:share": "node scripts/share-bridge-test.cjs && node scripts/share-smoke.cjs",
     "test:packaged": "node scripts/packaged-smoke.cjs",
     "release:check": "node scripts/release-check.cjs",
     "build": "tsc --noEmit && vite build --config frontend/vite.config.ts",

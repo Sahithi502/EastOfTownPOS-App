@@ -22,8 +22,8 @@ async function shareReceipt({base,directory,invoiceId,invoiceNumber,format,bytes
   return new Promise((resolve,reject)=>{
     const child=require('node:child_process').spawn(executable,['--share',file],{windowsHide:true,stdio:['ignore','pipe','pipe']});processes.add(child);
     let output='',opened=false,error='';
-    const timer=setTimeout(()=>{child.kill();reject(Error('Windows Share did not open. Your invoice is saved. Use Save and open WhatsApp.'));},20000);
-    child.stdout.on('data',data=>{output+=data.toString();if(!opened&&output.includes('share-opened')){opened=true;clearTimeout(timer);resolve({message:'Windows Share opened with the receipt file. Choose WhatsApp if available, select the customer, and review and send there. Delivery is not confirmed.'});}});
+    const timer=setTimeout(()=>{child.kill();reject(Error('Windows did not request the receipt attachment. Your invoice is saved. Use Save and open WhatsApp.'));},30000);
+    child.stdout.on('data',data=>{output+=data.toString();if(!opened&&output.includes('share-opened')&&output.includes('attachment-provided')){opened=true;clearTimeout(timer);resolve({message:'Windows Share opened with the receipt file. Choose WhatsApp if available, select the customer, and review and send there. Delivery is not confirmed.'});}});
     child.stderr.on('data',data=>{error=(error+data.toString()).slice(-1000);});
     child.on('error',()=>{clearTimeout(timer);processes.delete(child);reject(Error('Windows Share could not start. Windows security may require a trusted signed helper. Use Save and open WhatsApp.'));});
     child.on('exit',code=>{clearTimeout(timer);processes.delete(child);if(!opened)reject(Error('Windows Share could not open'+(error?' ('+error.trim()+')':'')+'. Use Save and open WhatsApp.'));});
