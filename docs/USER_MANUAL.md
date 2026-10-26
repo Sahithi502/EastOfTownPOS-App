@@ -191,7 +191,7 @@ Open **Business controls → User access**. Select the billing user, enter a new
 
 ### Prepare a WhatsApp receipt
 
-Open a saved invoice after checkout, from Invoice history, or from customer history. Under **Share purchase receipt**, enter the full phone number including country code, digits only (for example country code 91 followed by the customer's Indian number). Verify the recipient agrees. Select PDF or PNG and click **Prepare WhatsApp receipt**. Confirm the recipient, choose where to save the file, then attach it to the opened WhatsApp chat, review and send. The app does not automatically attach/send or confirm delivery. Long receipts need PDF. Internet and your WhatsApp sign-in are required for sending; billing and local PDF creation work offline.
+Open a saved invoice after checkout, from Invoice history, or from customer history. Under **Share purchase receipt**, enter the full phone number including country code, digits only (for example country code 91 followed by the customer's Indian number). Verify the recipient agrees. Select PDF or PNG and click **Save and open WhatsApp**. Confirm the recipient, choose where to save the file, then attach it to the opened WhatsApp chat, review and send. This manual fallback does not automatically attach/send or confirm delivery. Stage 6 also offers Windows Share with the file included, described below. Long receipts need PDF. Internet and your WhatsApp sign-in are required for sending; billing and local PDF creation work offline.
 
 ![Receipt preparation](screenshots/stage5-receipt-sharing.png)
 
@@ -209,4 +209,30 @@ For restore, choose **Select backup and prepare restore**, select the .db backup
 
 ### Requests retained for later approval
 
-Billing-user password reset by an administrator and WhatsApp receipts remain deferred. Barcode label dimensions/orientation are unchanged. Billing currently accepts rupee discounts; a selector for percentage or rupee discounts is still pending. Enter tax rates as plain numbers such as `5`, without `%`.
+Administrator billing-user password reset, INR/% discounts and monthly net profit/loss were implemented in Stage 5. Barcode label dimensions/orientation remain unchanged until shopkeeper approval. Stage 6 adds the requested Windows Share attachment, customer phone validation and live line totals below. Enter tax rates as plain numbers such as `5`, without `%`.
+
+## Stage 6 operating changes
+
+### Create or correct a customer's phone
+
+Open **Customers → Add customer**, or **New Bill → Create customer**. Choose **Phone country / code** (India +91 is the default) and enter the national mobile without its country code. For India enter exactly ten digits beginning 6, 7, 8 or 9. A nine-digit number cannot be saved. Other countries use their own validated mobile numbering plans. The saved international contact is shown with +country code.
+
+Existing invalid numbers show **Invalid saved mobile — administrator correction required** in Customers. As administrator, open that customer's **Purchase history → Correct customer details**, select the right country and enter the complete mobile. Save and confirm that purchase history remains. Old invoice details stay as recorded at the time of sale; sharing uses the corrected current contact. A valid format does not prove the number belongs to the customer—confirm it with them.
+
+![Country and phone correction](screenshots/stage6-customer-phone.png)
+
+### Check live bill totals
+
+Add a product. **QTY / PRICE** retains its per-item price. **LINE TOTAL** updates automatically when quantity, line discount or bill discount changes, including configured tax. It briefly shows Updating while the backend checks the cart. The live subtotal, combined discounts, tax and payable amount match the payment review. For a ₹100 item, quantity 2, 10% line discount, 5% bill discount and 5% tax, the line total is ₹179.55.
+
+![Live line totals](screenshots/stage6-live-line-totals.png)
+
+### Share an attached receipt through Windows
+
+Open a saved invoice from checkout, Invoice history or Customer purchase history. Choose PDF or PNG and click **Send via Windows Share**, then confirm. Windows Share opens with the actual receipt file. Select WhatsApp if it appears, choose the correct customer, inspect the attachment and press Send. The number field does not select the recipient inside Windows Share; you choose them in WhatsApp. Close the small sharing window when finished.
+
+If WhatsApp does not appear, try the other file format or use **Save and open WhatsApp**. This fallback requires a valid international number, saves the receipt and opens the chat; attach the file manually. The app never claims delivery. Sending needs internet and your WhatsApp login; billing and file generation work offline. Long receipts require PDF. No paid API or automated Send is configured. Generated sharing-cache files expire after seven days; user-saved copies are not removed.
+
+![Receipt sharing options](screenshots/stage6-receipt-sharing.png)
+
+See RELEASE.md for Windows installation, upgrade, persistent-data/backup and signing requirements. Stage 6 physical printer, scanner, reboot and real WhatsApp acceptance must be completed on the shop devices.

@@ -28,10 +28,10 @@ function fingerprint(db,tables){return tables.map(t=>{const rows=db.prepare('SEL
  await new Promise(resolve=>{child.once('exit',resolve);child.kill();});child=null;
  copy=new DatabaseSync(copyPath,{readOnly:true});try{
    const after=fingerprint(copy,tables);if(JSON.stringify(before)!==JSON.stringify(after))throw new Error('Upgrade changed an existing business record');
-   if(copy.prepare('SELECT COUNT(*) AS n FROM schema_migrations').get().n!==7)throw new Error('Stage 5 migration did not complete');
+   if(copy.prepare('SELECT COUNT(*) AS n FROM schema_migrations').get().n!==8)throw new Error('Stage 6 migration did not complete');
    for(const v of versions)if(copy.prepare('SELECT checksum FROM schema_migrations WHERE version=?').get(v.version).checksum!==v.checksum)throw new Error('Upgrade rewrote a historical checksum');
    if(copy.prepare('PRAGMA foreign_key_check').all().length)throw new Error('Foreign-key check failed');
-   console.log('PASS: copied existing database starts; all original table rows/values and migration checksums preserved; V007 applied; health and foreign keys valid.');
+   console.log('PASS: copied existing database starts; all original table rows/values and migration checksums preserved; V008 applied; health and foreign keys valid.');
    console.log('Record counts: '+JSON.stringify(after.map(x=>({table:x.table,count:x.count}))));console.log('Retained original backup: '+originalBackup);console.log('Retained upgraded test copy: '+copyPath);console.log('Source database was opened read-only.');
  }finally{copy.close();}
 }finally{if(child&&child.exitCode===null)await new Promise(resolve=>{child.once('exit',resolve);child.kill();});}})().catch(e=>{console.error(e.message);process.exitCode=1;});

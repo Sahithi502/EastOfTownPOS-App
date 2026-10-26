@@ -1,0 +1,13 @@
+const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),{spawnSync}=require('node:child_process'),assert=require('node:assert/strict');
+const root=path.resolve(__dirname,'..'),version=require('../package.json').version,base=path.join(root,'release','win-unpacked');
+const names=['East of Town.exe','resources/backend/pos.jar','resources/runtime/bin/java.exe','resources/native/ReceiptShare.exe','resources/app.asar'];
+const files=names.map(name=>{const file=path.join(base,name);assert.ok(fs.statSync(file).size>0,'Missing packaged file '+name);return {name,sha256:crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')};});
+const asar=require('@electron/asar');assert.equal(JSON.parse(asar.extractFile(path.join(base,'resources/app.asar'),'package.json')).version,version);assert.ok(!asar.listPackage(path.join(base,'resources/app.asar')).some(name=>/\.db(?:-wal|-shm)?$/.test(name)),'Database embedded in package');
+const helper=spawnSync(path.join(base,'resources/native/ReceiptShare.exe'),['--probe',path.join(root,'docs/screenshots/stage6-customer-phone.png')],{encoding:'utf8',windowsHide:true,timeout:20000});const nativeAttachmentCheck={status:helper.status===0&&!helper.error?'passed':'blocked-or-failed',exitCode:helper.status,error:helper.error?.code||helper.stderr.trim()||null};
+const installer=path.join(root,'release','East of Town Setup '+version+'.exe');
+const result=spawnSync('powershell.exe',['-NoProfile','-ExecutionPolicy','Bypass','-File',path.join(root,'scripts/release-signatures.ps1'),'-Directory',base,'-Installer',installer],{encoding:'utf8',windowsHide:true});assert.equal(result.status,0,result.stderr);const signatures=JSON.parse(result.stdout);
+if(fs.existsSync(installer))files.push({name:path.basename(installer),sha256:crypto.createHash('sha256').update(fs.readFileSync(installer)).digest('hex')});
+const manifest={version,createdAt:new Date().toISOString(),files,signatures,nativeAttachmentCheck,acceptance:'See docs/STAGE_6_TEST_RESULTS.md. Local checks do not certify clean-machine installation, physical printing, actual WhatsApp sending or Windows reboot.'};fs.writeFileSync(path.join(root,'release','release-manifest.json'),JSON.stringify(manifest,null,2)+'\n');console.log(JSON.stringify(manifest,null,2));
+if(process.argv.includes('--require-signed'))assert.ok(fs.existsSync(installer)&&signatures.every(s=>s.Status==='Valid'),'Production gate failed: trusted signatures required on application, share helper and installer.');
+
+assert.equal(nativeAttachmentCheck.status,'passed','Native attachment helper is blocked or failed. Inspect Windows signing policy; use manual receipt sharing until a trusted signed release is available.');

@@ -19,7 +19,7 @@ async function start(){
   const bundled=path.join(root,'runtime','bin','java.exe');
   const java=existsSync(bundled)?bundled:process.env.JAVA_HOME?path.join(process.env.JAVA_HOME,'bin','java.exe'):'java';
   console.log('Using Java: '+java);
-  processHandle=spawn(java,['-jar',path.join(root,'backend','target','pos-0.5.0.jar')],{windowsHide:true,stdio:['ignore','ignore','pipe'],env:{...process.env,EOT_DATA_DIR:directory,EOT_PORT:String(port),EOT_API_TOKEN:token}});
+  processHandle=spawn(java,['-jar',path.join(root,'backend','target','pos-0.6.0.jar')],{windowsHide:true,stdio:['ignore','ignore','pipe'],env:{...process.env,EOT_DATA_DIR:directory,EOT_PORT:String(port),EOT_API_TOKEN:token}});
   let failure;processHandle.on('error',e=>{failure=e;});
   processHandle.stderr.on('data',()=>{});
   for(let i=0;i<100;i++){if(failure)throw failure;if(processHandle.exitCode!==null)throw new Error('Backend exited during startup');try{if((await call('GET','/health')).status===200)return;}catch{}await new Promise(r=>setTimeout(r,200));}
@@ -71,6 +71,19 @@ async function stop(){if(processHandle&&processHandle.exitCode===null){await new
     assert.equal((await call('GET','/billing/invoices?search=9999912345')).value.length,1);assert.equal((await call('GET','/billing/requests/'+checkout.requestKey)).value.found,true);
     assert.equal((await call('POST','/billing/invoices/'+invoiceId+'/print',{widthMm:80,printer:'TEST-MISSING-PRINTER'})).status,400);
     console.log('PASS: Stage 3 split checkout, customer purchase invoice, duplicate retry, printer failure and persistent invoice/payment/stock records across backend restart.');
+    const interruptedCart={lines:[{variantId:created.value.id,quantity:1,discountPaise:0}],billDiscountPaise:0,customerId:customer.value.id};
+    const interruptedQuote=(await call('POST','/billing/quote',interruptedCart)).value;
+    const interrupted={requestKey:require('node:crypto').randomUUID(),cart:interruptedCart,quoteToken:interruptedQuote.token,payments:[{method:'CASH',amountPaise:interruptedQuote.totalPaise}]};
+    // Force termination while a checkout is in flight; either commit outcome is valid.
+    const inflight=call('POST','/billing/checkout',interrupted).catch(()=>null);
+    await new Promise(resolve=>{processHandle.once('exit',resolve);processHandle.kill('SIGKILL');});await inflight;
+    session='';await start();session=(await call('POST','/auth/login',{username:'test-owner',password:'test-only-owner-password'})).value.session;
+    const interruptedStatus=(await call('GET','/billing/requests/'+interrupted.requestKey)).value;
+    const recovered=await call('POST','/billing/checkout',interrupted);assert.equal(recovered.status,200);
+    if(interruptedStatus.found)assert.equal(recovered.value.invoice.id,interruptedStatus.sale.invoice.id);
+    assert.equal((await call('POST','/billing/checkout',interrupted)).value.invoice.id,recovered.value.invoice.id);
+    assert.equal((await call('GET','/variants')).value[0].current_stock,7);assert.equal((await call('GET','/billing/invoices')).value.length,2);assert.equal((await call('GET','/health')).value.database,'ok');
+    console.log('PASS: forced backend termination during checkout, restart health, request recovery/retry and exactly-once stock.');
     console.log('Isolated test database retained at '+directory);
   }finally{await stop();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

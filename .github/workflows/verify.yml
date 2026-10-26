@@ -12,7 +12,7 @@ concurrency:
 jobs:
   verify:
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-java@v6
@@ -32,7 +32,28 @@ jobs:
         run: npm.cmd ci
       - name: Typecheck and build renderer
         run: npm.cmd run build
+      - name: Build and verify native Windows receipt sharing
+        run: |
+          npm.cmd run build:share
+          npm.cmd run test:share
       - name: API and restart verification
         run: npm.cmd run test:api
-      - name: Electron catalog, billing, customers and reports acceptance
+      - name: Electron catalog, billing, controls and Stage 6 acceptance
         run: npm.cmd run test:desktop
+      - name: Prepare verified bundled runtime
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/prepare-runtime.ps1
+      - name: Build packaged Windows evaluation application
+        run: npm.cmd run package:dir
+      - name: Verify packaged app with bundled Java and restart persistence
+        run: npm.cmd run test:packaged
+      - name: Record package hashes and signature status
+        run: npm.cmd run release:check
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: stage6-verification
+          path: |
+            backend/target/surefire-reports/*.xml
+            docs/screenshots/stage6-*.png
+            docs/runtime-manifest.json
+            release/release-manifest.json

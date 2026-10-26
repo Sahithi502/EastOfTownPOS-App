@@ -2,6 +2,7 @@ node_modules/
 dist/
 release/
 backend/target/
+native/bin/
 *.db
 *.db-shm
 *.db-wal
