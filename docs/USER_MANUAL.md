@@ -120,4 +120,45 @@ Tax defaults to 0%. In **Variant tax configuration**, find/select the exact SKU,
 
 ![Billing settings](screenshots/stage3-billing-settings.png)
 
-Full customer history/reports are Stage 4. Returns/cancellations/refunds and backup/restore remain Stage 5; completed invoices cannot currently be deleted or reversed. Keep evaluation/test records in the separate test profile until final release acceptance.
+Full customer history/reports are implemented in Stage 4 below. Returns/cancellations/refunds and backup/restore remain Stage 5; completed invoices cannot currently be deleted or reversed. Keep evaluation/test records in the separate test profile until final release acceptance.
+
+## Stage 4 — customers and reports
+
+### Find a customer and view purchases
+
+1. Select **Customers** in the sidebar. Search the customer's name or digits-only mobile and choose **Search customers**.
+2. The list shows completed purchase count, total amount including tax, last purchase and last invoice. Use **Previous customers / Next customers** for more records.
+3. Choose **Purchase history**. Every invoice linked to the permanent customer ID is available through the purchase paging buttons.
+4. Choose **View purchase details** for original products, size/colour, quantities, prices, discounts, tax and payments. Print/reprint or save the receipt using the existing receipt buttons.
+5. For a new customer, choose **Add customer**, enter name/mobile and optional email, use **Check similar customers**, then **Save customer**. An existing mobile is rejected; select the existing record. People with the same name may be different customers, so name matches are warnings.
+
+Administrators can choose **Correct customer details**, correct name/mobile/email and save. Original invoices keep the customer details saved at sale, while purchases remain linked to this customer's ID. **View correction audit** shows before/after details and the administrator/time. If a stale-edit error appears, reopen the history and make the correction again. Billing users can create/view customers but cannot correct them.
+
+![Customer history and correction audit](screenshots/stage4-customer-history.png)
+
+### Dashboard (administrator)
+
+1. Select **Dashboard**, choose the date preset and press **Apply dates / refresh**. For **Custom range**, fill both dates first. Dates use Indian time; the financial year begins April 1 and this week begins Monday.
+2. Gross sales are before discounts/tax. Net sales subtract all discounts and exclude tax. Invoice value includes tax. Collections show applied payments by method; cash change is excluded. Average bill includes tax.
+3. Stock units and cost valuation are CURRENT, independent of the sales period, and include inactive stock. Units missing cost are shown separately. Low/out-of-stock alerts include active variants only. Alerts show up to 20 rows; use the inventory report for the full list.
+4. Recent invoices open the saved receipt. Bestsellers show variants and quantities sold within the selected period.
+
+![Dashboard](screenshots/stage4-dashboard.png)
+
+### Reports and Excel/PDF export (administrator)
+
+1. Select **Reports**. Choose daily/monthly/yearly sales, product/category/variant sales, payments, stock movements, current inventory valuation, gross profit estimates, customer purchases or individual purchase history.
+2. Choose the date range and press **View report**. Individual purchase history also requires **Find customer** and customer selection.
+3. Review the period and accounting note. **Export Excel** or **Export PDF** opens Windows Save As. Choose a location and save; a success message appears only after the file is written.
+4. Exports use the most recently applied filters and the latest saved database records. Use **View report** again when you change filters. An invoice committed after the preview may appear in a later export.
+5. Excel has a filterable/frozen table and a **Read me** sheet. Amounts are INR. Unknown costs remain blank. PDFs use landscape A4/A3 depending on the number of columns and repeat headers on additional pages.
+
+Inventory valuation always uses current stock and current cost. Profit estimates use cost saved at sale and exclude tax, operating expenses and lines with missing costs; missing-cost quantities are shown. Customer-report payment descriptions repeat for each item in the same invoice, so do not sum those descriptions. Stock reports filter the recording date and display an adjustment's effective date separately.
+
+If a report exceeds 20,000 source records, choose a shorter period. Reports reject overly large selections instead of silently omitting records. Customer screen history remains fully paged. Return/refund reporting will be added with Stage 5; do not manually delete/change invoices in SQLite.
+
+![Report preview and exports](screenshots/stage4-reports.png)
+
+### Requests retained for later approval
+
+Billing-user password reset by an administrator and WhatsApp receipts remain deferred. Barcode label dimensions/orientation are unchanged. Billing currently accepts rupee discounts; a selector for percentage or rupee discounts is still pending. Enter tax rates as plain numbers such as `5`, without `%`.

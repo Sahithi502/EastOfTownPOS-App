@@ -16,7 +16,7 @@ app.whenReady().then(async () => {
   try {
     port = await new Promise((resolve,reject) => { const s=net.createServer(); s.on('error',reject); s.listen(0,'127.0.0.1',()=>{const p=s.address().port;s.close(()=>resolve(p));}); });
     const base = app.isPackaged ? process.resourcesPath : app.getAppPath();
-    const jar = app.isPackaged ? path.join(base,'backend','pos.jar') : path.join(base,'backend','target','pos-0.3.0.jar');
+    const jar = app.isPackaged ? path.join(base,'backend','pos.jar') : path.join(base,'backend','target','pos-0.4.0.jar');
     const bundledJava=path.join(base,'runtime','bin','java.exe');
     const java = app.isPackaged || fs.existsSync(bundledJava) ? bundledJava : process.env.JAVA_HOME ? path.join(process.env.JAVA_HOME,'bin','java.exe') : 'java';
     if(!fs.existsSync(path.join(app.getAppPath(),'dist','index.html'))) throw new Error('Build the frontend first: npm.cmd run build, then npm.cmd start');
@@ -49,7 +49,9 @@ app.whenReady().then(async () => {
       caller(event);
       const allowed=(method==='GET' && /^\/(health|categories|variants(?:\?search=[^#]*)?|auth\/status|imports\/history|stock\/movements\/[a-f0-9-]{36}|labels\/(printers|settings)|billing\/invoices(?:\/[a-f0-9-]{36})?)$/.test(route)) || (method==='POST' && (/^\/auth\/(setup|login|logout|users|recover|recovery-code)$/.test(route) || ['/categories','/variants','/stock/adjustments','/labels/preview','/labels/print','/labels/settings','/billing/checkout'].includes(route) || /^\/imports\/[a-f0-9-]{36}\/(preview|commit)$/.test(route))) || (method==='PUT' && /^\/variants\/[a-f0-9-]{36}$/.test(route));
       const billingAllowed=(method==='GET' && /^\/billing\/(settings|taxes|customers(?:\?search=[^#]*)?|invoices(?:\?[^#]*)?|invoices\/[a-f0-9-]{36}|requests\/[a-f0-9-]{36})$/.test(route)) || (method==='POST' && (/^\/billing\/(quote|checkout|customers|settings|taxes|test-print)$/.test(route) || /^\/billing\/invoices\/[a-f0-9-]{36}\/print$/.test(route)));
-      if(!allowed && !billingAllowed) throw new Error('Unsupported operation');
+      const reportsAllowed=method==='GET' && /^\/reports\/(dashboard|daily|monthly|yearly|products|categories|variants|payments|stock|inventory|profit|customers|customer-history)(?:\?[^#]*)?$/.test(route);
+      const customersAllowed=(method==='GET' && /^\/customers(?:\?[^#]*|\/duplicates\?[^#]*|\/[a-f0-9-]{36}(?:\/changes|\?[^#]*)?)?$/.test(route)) || (method==='POST' && route==='/customers') || (method==='PUT' && /^\/customers\/[a-f0-9-]{36}$/.test(route));
+      if(!allowed && !billingAllowed && !reportsAllowed && !customersAllowed) throw new Error('Unsupported operation');
       const result=await api(method,route,body);
       if(route==='/auth/login'){userSession=result.session;return {user:result.user};}
       if(route==='/auth/logout')userSession='';
@@ -66,6 +68,11 @@ app.whenReady().then(async () => {
       else if(input?.kind==='errors' && /^[a-f0-9-]{36}$/.test(input.batchId)){route=`/imports/${input.batchId}/errors`;name='import-validation.xlsx';}
       else if(input?.kind==='labels'){route='/labels/pdf';method='POST';body=input.labels;name='barcode-labels.pdf';}
       else if(input?.kind==='receipt' && /^[a-f0-9-]{36}$/.test(input.invoiceId) && [58,80].includes(input.width)){route='/billing/invoices/'+input.invoiceId+'/pdf?width='+input.width;name='receipt-'+input.invoiceId+'.pdf';}
+      else if(input?.kind==='report' && /^(daily|monthly|yearly|products|categories|variants|payments|stock|inventory|profit|customers|customer-history)$/.test(input.type) && ['pdf','xlsx'].includes(input.format)){
+        const query=new URLSearchParams({format:input.format,preset:String(input.preset||'today')});
+        for(const key of ['from','to','customerId'])if(input[key])query.set(key,String(input[key]));
+        route='/reports/'+input.type+'/export?'+query.toString();name='east-of-town-'+input.type+'.'+input.format;
+      }
       else throw new Error('Unsupported download');
       const data=await api(method,route,body,true);
       const selected=await dialog.showSaveDialog(window,{defaultPath:path.join(app.getPath('downloads'),name),filters:[{name:name.endsWith('.pdf')?'PDF':'Excel',extensions:[name.endsWith('.pdf')?'pdf':'xlsx']}]});

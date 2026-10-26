@@ -1,10 +1,11 @@
 {
   "name": "east-of-town-pos",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "main": "electron/main.cjs",
   "scripts": {
-    "test:desktop": "node scripts/desktop-smoke.cjs && node scripts/billing-desktop.cjs",
+    "test:desktop": "node scripts/desktop-smoke.cjs && node scripts/billing-desktop.cjs && node scripts/reports-desktop.cjs",
+    "test:reports-desktop": "node scripts/reports-desktop.cjs",
     "test:billing-desktop": "node scripts/billing-desktop.cjs",
     "test:api": "node scripts/backend-smoke.cjs",
     "dev": "vite --config frontend/vite.config.ts",
@@ -39,7 +40,7 @@
     ],
     "extraResources": [
       {
-        "from": "backend/target/pos-0.3.0.jar",
+        "from": "backend/target/pos-0.4.0.jar",
         "to": "backend/pos.jar"
       },
       {
