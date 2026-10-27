@@ -52,6 +52,8 @@ Stage 6 software changes may be merged after successful CI while these release g
 
 ## Operator regression cases
 
+The 27 October Windows Share timeout follow-up is documented in [WINDOWS_SHARE_FIX.md](WINDOWS_SHARE_FIX.md): six bridge tests and the expanded Stage 6 desktop regression pass; generated PDF and PNG files were actually requested by Windows Share. The native retry button was exercised with PDF. WhatsApp was visible as a target; no target/recipient was selected and nothing was sent. Busy-flow behavior and background activation limits are recorded separately from successful attachment preparation.
+
 1. Customers → Add customer: India (+91), nine digits must not save; ten digits beginning 6–9 normalize to +91. Reject letters, spaces, extra digits and wrong country mobile plans. Test another country with a genuine test mobile format.
 2. Create customer from New Bill and verify identical validation. Attempt a duplicate saved number and confirm no new record. Correct an old invalid contact as administrator, retaining the same purchase history and an audit entry.
 3. New Bill: price ₹100, quantity 2, 10% line discount, 5% bill discount, 5% tax → line total ₹179.55, unit price ₹100. Verify live summary and payment review agree. Repeat scans, lower quantity, remove a line and test multiple lines.

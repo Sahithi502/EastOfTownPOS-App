@@ -21,12 +21,22 @@ async function shareReceipt({base,directory,invoiceId,invoiceNumber,format,bytes
   fs.writeFileSync(file,bytes,{flag:'wx'});
   return new Promise((resolve,reject)=>{
     const child=require('node:child_process').spawn(executable,['--share',file],{windowsHide:true,stdio:['ignore','pipe','pipe']});processes.add(child);
-    let output='',opened=false,error='';
-    const timer=setTimeout(()=>{child.kill();reject(Error('Windows did not request the receipt attachment. Your invoice is saved. Use Save and open WhatsApp.'));},30000);
-    child.stdout.on('data',data=>{output+=data.toString();if(!opened&&output.includes('share-opened')&&output.includes('attachment-provided')){opened=true;clearTimeout(timer);resolve({message:'Windows Share opened with the receipt file. Choose WhatsApp if available, select the customer, and review and send there. Delivery is not confirmed.'});}});
+    let output='',settled=false,error='';
+    const timer=setTimeout(()=>{settled=true;reject(Error('Windows Share did not become ready. Your invoice is saved. Use Save and open WhatsApp.'));child.kill();},30000);
+    child.stdout.on('data',data=>{
+      output+=data.toString();
+      if(settled)return;
+      if(output.includes('share-opened')&&output.includes('attachment-provided')){
+        settled=true;clearTimeout(timer);resolve({state:'attachment-provided',message:'Windows Share opened with the receipt file. Choose WhatsApp if available, select the customer, and review and send there. Delivery is not confirmed.'});
+      }else if(output.includes('share-retry-available')){
+        // The native window remains open for a deliberate retry. This is not an
+        // attachment/delivery confirmation and must never use the success text.
+        settled=true;clearTimeout(timer);resolve({state:'awaiting-share',message:'The receipt sharing window is ready, but Windows has not requested the attachment yet. Switch to East of Town — Share receipt and click Open Windows Share. If it still does not open, close that window and use Save and open WhatsApp. Your invoice is saved.'});
+      }
+    });
     child.stderr.on('data',data=>{error=(error+data.toString()).slice(-1000);});
     child.on('error',()=>{clearTimeout(timer);processes.delete(child);reject(Error('Windows Share could not start. Windows security may require a trusted signed helper. Use Save and open WhatsApp.'));});
-    child.on('exit',code=>{clearTimeout(timer);processes.delete(child);if(!opened)reject(Error('Windows Share could not open'+(error?' ('+error.trim()+')':'')+'. Use Save and open WhatsApp.'));});
+    child.on('exit',code=>{clearTimeout(timer);processes.delete(child);if(!settled)reject(Error('Windows Share could not open'+(error?' ('+error.trim()+')':'')+'. Use Save and open WhatsApp.'));});
   });
 }
 function stopShares(){for(const child of processes)child.kill();processes.clear();}
