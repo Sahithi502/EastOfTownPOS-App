@@ -7,7 +7,7 @@
 | 3. POS and receipts | Implemented in 0.3.0; hardware acceptance pending | STAGE_3.md, STAGE_3_TEST_RESULTS.md, SCHEMA.md, USER_MANUAL.md, screenshots/ |
 | 4. Customers and reports | Implemented in 0.4.0 | STAGE_4.md, STAGE_4_TEST_RESULTS.md, SCHEMA.md, USER_MANUAL.md; reconciliation and isolated test evidence |
 | 5. Returns, security, backup and net profit/loss | Implemented in 0.5.0; real WhatsApp delivery and final hardware acceptance require operator devices | STAGE_5.md, STAGE_5_TEST_RESULTS.md, CLOUD_MIGRATION.md, SCHEMA.md, USER_MANUAL.md |
-| 6. Release and handover | Planned | ROADMAP.md; signing, offline, reboot, printer/scanner and clean-machine gates |
+| 6. Release and handover | Implemented software candidate 0.6.0; trusted signing, clean-machine and physical shop acceptance pending | STAGE_6.md, STAGE_6_TEST_RESULTS.md, RELEASE.md; native sharing, phone validation, live totals, packaged verification and handover |
 
 Each future stage must update this index, architecture/schema notes, operating manual, dependency notices and its own dated test-evidence document. Record actual failures/limitations; do not mark planned work as delivered. Business test data must stay in isolated databases.
 

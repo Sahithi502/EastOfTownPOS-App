@@ -18,7 +18,7 @@ public final class BackupFiles {
         try(var c=read(file);var s=c.createStatement()){
             try(var r=s.executeQuery("PRAGMA integrity_check")){if(!r.next()||!r.getString(1).equals("ok")||r.next())throw new IllegalArgumentException("Database integrity check failed");}
             try(var r=s.executeQuery("PRAGMA foreign_key_check")){if(r.next())throw new IllegalArgumentException("Database foreign keys are invalid");}
-            String[] names={"catalog","imports_stock_users","administrator_recovery","billing","checkout_safety","customer_reports","controls"};int count=0;
+            String[] names={"catalog","imports_stock_users","administrator_recovery","billing","checkout_safety","customer_reports","controls","customer_phones"};int count=0;
             try(var r=s.executeQuery("SELECT version,checksum FROM schema_migrations ORDER BY version")){
                 while(r.next()){
                     int v=r.getInt(1);if(v!=++count || v>names.length)throw new IllegalArgumentException("Unsupported backup schema");

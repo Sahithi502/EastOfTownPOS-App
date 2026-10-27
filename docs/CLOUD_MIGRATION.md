@@ -1,6 +1,8 @@
 # Future server database migration and reconciliation
 
-No paid cloud service or remote database is implemented in 0.5.0. Business services use JDBC repositories and transaction boundaries; BackupFiles contains SQLite-specific snapshot/restore behavior. Replace those infrastructure operations when introducing a server database.
+No paid cloud service or remote database is implemented in 0.6.0. Business services use JDBC repositories and transaction boundaries; BackupFiles contains SQLite-specific snapshot/restore behavior. Replace those infrastructure operations when introducing a server database.
+
+Stage 6 V008 adds customer phone_region and phone_e164. Preserve both fields, the original mobile field and the nullable canonical-phone uniqueness rule during migration. Existing legacy fields may legitimately remain null until an administrator confirms/corrects them. Do not infer missing digits, merge customers automatically or rewrite historical invoice phone snapshots. Reconcile normalized contacts as well as original business rows and audit history.
 
 1. Freeze writes and create a verified SQLite backup plus Business controls → Backup and restore → Export database JSON. Preserve the original backup, SHA-256 manifest and export securely; both include account hashes and customer data.
 2. Create a PostgreSQL schema using versioned server migrations. Map SQLite INTEGER money to BIGINT paise, quantities to integer/bigint, text IDs to UUID or stable text as appropriate (initial category IDs are text), ISO timestamps to TIMESTAMPTZ and effective dates to DATE. Keep case-insensitive unique SKU/username/category behavior explicitly; preserve all unique request keys, invoice numbers, FK links and indexes. Do not execute SQLite PRAGMA/VACUUM statements against PostgreSQL or copy SQLite schema_migrations hashes as server migrations.

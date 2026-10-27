@@ -27,7 +27,9 @@ public class BillingService {
     public record Config(@NotBlank @Size(max=120) String shopName,@NotNull @Size(max=300) String address,@NotNull @Size(max=40) String phone,
         @NotNull @Size(max=120) String thankYou,@Pattern(regexp="[A-Z0-9]{1,10}") @NotNull String invoicePrefix,
         @Min(0) @Max(10000) int billingDiscountBps,@Min(58) @Max(80) int receiptWidthMm,@NotNull @Size(max=200) String printer,boolean autoPrint) {}
-    public record CustomerInput(@NotBlank @Size(max=120) String name,@Pattern(regexp="[0-9]{7,15}") @NotNull String mobile,@Email @Size(max=160) String email) {}
+    public record CustomerInput(@NotBlank @Size(max=120) String name,@NotNull @Size(max=16) String mobile,@Email @Size(max=160) String email,String country) {
+        public CustomerInput(String name,String mobile,String email){this(name,mobile,email,"IN");}
+    }
     public record Tax(@NotBlank String variantId,@Min(0) @Max(10000) int rateBps) {}
     public record Item(String variantId,String productName,String category,String sku,String barcode,String size,String colour,
         long unitPricePaise,Long costPaise,int quantity,long discountPaise,long billDiscountPaise,int taxRateBps,long taxPaise,long lineTotalPaise) {}
@@ -72,7 +74,11 @@ public class BillingService {
         if(subtotal>MAX_MONEY)throw new IllegalArgumentException("Bill amount exceeds supported limit");
         if(!user.role().equals("ADMIN") && BigDecimal.valueOf(discount).multiply(BigDecimal.valueOf(10000)).compareTo(BigDecimal.valueOf(subtotal).multiply(BigDecimal.valueOf(config.billingDiscountBps())))>0)
             throw new IllegalArgumentException("Discount exceeds your permitted limit. Ask an administrator or reduce the discount.");
-        if(cart.customerId()!=null && !cart.customerId().isBlank() && repo.jdbc().queryForObject("SELECT COUNT(*) FROM customers WHERE id=?",Integer.class,cart.customerId())!=1)throw new IllegalArgumentException("Customer not found");
+        if(cart.customerId()!=null && !cart.customerId().isBlank()){
+            var customers=repo.jdbc().queryForList("SELECT mobile FROM customers WHERE id=?",cart.customerId());
+            if(customers.isEmpty())throw new IllegalArgumentException("Customer not found");
+            if(PhoneNumbers.existing(customers.getFirst().get("mobile").toString())==null)throw new IllegalArgumentException("This customer has an invalid saved mobile number. Ask an administrator to correct it in Customers, or use guest checkout.");
+        }
         // Largest remainder allocation assigns every discounted paise to an invoice line.
         long[] shares=new long[variants.size()];BigInteger[] remainders=new BigInteger[shares.length];long assigned=0;
         for(int i=0;i<shares.length;i++){
@@ -133,7 +139,7 @@ public class BillingService {
         do{sequence=Math.addExact(sequence,1);candidate=prefix+String.format(Locale.ROOT,"%06d",sequence);}while(repo.jdbc().queryForObject("SELECT COUNT(*) FROM invoices WHERE invoice_number=?",Integer.class,candidate)>0);
         repo.jdbc().update("UPDATE application_settings SET value=? WHERE key='invoice_sequence'",Long.toString(sequence));return candidate;
     }
-    public Map<String,Object> invoice(String id){var rows=repo.jdbc().queryForList("SELECT * FROM invoices WHERE id=?",id);if(rows.isEmpty())throw new IllegalArgumentException("Invoice not found");return Map.of("invoice",rows.getFirst(),"items",repo.jdbc().queryForList("SELECT * FROM invoice_items WHERE invoice_id=? ORDER BY line_position,id",id),"payments",repo.jdbc().queryForList("SELECT * FROM payments WHERE invoice_id=? ORDER BY method",id),"reversals",repo.jdbc().queryForList("SELECT * FROM returns WHERE invoice_id=? ORDER BY created_at,id",id),"refunds",repo.jdbc().queryForList("SELECT f.* FROM refunds f JOIN returns r ON r.id=f.return_id WHERE r.invoice_id=? ORDER BY f.created_at,f.id",id));}
+    public Map<String,Object> invoice(String id){var rows=repo.jdbc().queryForList("SELECT * FROM invoices WHERE id=?",id);if(rows.isEmpty())throw new IllegalArgumentException("Invoice not found");var invoice=rows.getFirst();String phone=Objects.toString(invoice.get("customer_phone"),"");if(invoice.get("customer_id")!=null){var current=repo.jdbc().queryForList("SELECT mobile FROM customers WHERE id=?",invoice.get("customer_id"));if(!current.isEmpty())phone=current.getFirst().get("mobile").toString();}var normalized=PhoneNumbers.existing(phone);return Map.of("invoice",invoice,"sharePhone",normalized==null?"":normalized.international(),"sharePhoneNeedsCorrection",!phone.isBlank()&&normalized==null,"items",repo.jdbc().queryForList("SELECT * FROM invoice_items WHERE invoice_id=? ORDER BY line_position,id",id),"payments",repo.jdbc().queryForList("SELECT * FROM payments WHERE invoice_id=? ORDER BY method",id),"reversals",repo.jdbc().queryForList("SELECT * FROM returns WHERE invoice_id=? ORDER BY created_at,id",id),"refunds",repo.jdbc().queryForList("SELECT f.* FROM refunds f JOIN returns r ON r.id=f.return_id WHERE r.invoice_id=? ORDER BY f.created_at,f.id",id));}
     public Object history(String search,LocalDate from,LocalDate to,Long amount){
         if(from!=null && to!=null && from.isAfter(to))throw new IllegalArgumentException("Start date must precede end date");
         String pattern="%"+search.replace("!","!!").replace("%","!%").replace("_","!_")+"%";
@@ -142,11 +148,11 @@ public class BillingService {
         if(to!=null){sql+=" AND created_at<?";args.add(timestamp(to.plusDays(1).atStartOfDay(ZoneId.of("Asia/Kolkata")).toInstant()));}
         if(amount!=null){sql+=" AND total_paise=?";args.add(amount);}return repo.jdbc().queryForList(sql+" ORDER BY created_at DESC,id DESC LIMIT 500",args.toArray());
     }
-    public Object customers(String search){String pattern="%"+search.replace("!","!!").replace("%","!%").replace("_","!_")+"%";return repo.jdbc().queryForList("SELECT id,name,mobile,email FROM customers WHERE name LIKE ? ESCAPE '!' OR mobile LIKE ? ESCAPE '!' ORDER BY name LIMIT 100",pattern,pattern);}
+    public Object customers(String search){String pattern="%"+search.replace("!","!!").replace("%","!%").replace("_","!_")+"%";return repo.jdbc().queryForList("SELECT * FROM customers WHERE name LIKE ? ESCAPE '!' OR mobile LIKE ? ESCAPE '!' ORDER BY name LIMIT 100",pattern,pattern).stream().map(PhoneNumbers::describe).toList();}
     @Transactional public Object customer(@Valid CustomerInput input,String actor){lock();
         if(input.name().trim().isEmpty())throw new IllegalArgumentException("Enter a customer name");
-        if(repo.jdbc().queryForObject("SELECT COUNT(*) FROM customers WHERE mobile=?",Integer.class,input.mobile())>0)throw new IllegalArgumentException("A customer with this mobile already exists. Search and select that customer.");
-        String id=UUID.randomUUID().toString();String now=timestamp(Instant.now());repo.jdbc().update("INSERT INTO customers(id,name,mobile,email,created_at,updated_at) VALUES (?,?,?,?,?,?)",id,input.name().trim(),input.mobile(),input.email(),now,now);audit("CUSTOMER_CREATED",id,actor);return repo.jdbc().queryForMap("SELECT id,name,mobile,email FROM customers WHERE id=?",id);
+        var phone=PhoneNumbers.parse(input.country()==null?"IN":input.country(),input.mobile());PhoneNumbers.duplicate(repo,phone.international(),null);
+        String id=UUID.randomUUID().toString();String now=timestamp(Instant.now());repo.jdbc().update("INSERT INTO customers(id,name,mobile,email,created_at,updated_at,phone_region,phone_e164) VALUES (?,?,?,?,?,?,?,?)",id,input.name().trim(),phone.international(),input.email(),now,now,phone.region(),phone.international());audit("CUSTOMER_CREATED",id,actor);return PhoneNumbers.describe(repo.jdbc().queryForMap("SELECT * FROM customers WHERE id=?",id));
     }
     void audit(String action,String id,String actor){repo.jdbc().update("INSERT INTO audit_logs VALUES (?,?,?,?,?)",UUID.randomUUID().toString(),action,id,actor,Instant.now().toString());}
     static String timestamp(Instant instant){return new java.time.format.DateTimeFormatterBuilder().appendInstant(9).toFormatter().format(instant);}

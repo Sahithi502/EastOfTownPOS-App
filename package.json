@@ -1,18 +1,24 @@
 {
   "name": "east-of-town-pos",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
   "main": "electron/main.cjs",
   "scripts": {
-    "test:desktop": "node scripts/desktop-smoke.cjs && node scripts/billing-desktop.cjs && node scripts/reports-desktop.cjs && node scripts/controls-desktop.cjs",
+    "test:desktop": "node scripts/desktop-smoke.cjs && node scripts/billing-desktop.cjs && node scripts/reports-desktop.cjs && node scripts/controls-desktop.cjs && node scripts/release-desktop.cjs",
     "test:reports-desktop": "node scripts/reports-desktop.cjs",
     "test:billing-desktop": "node scripts/billing-desktop.cjs",
     "test:api": "node scripts/backend-smoke.cjs",
     "dev": "vite --config frontend/vite.config.ts",
+    "build:share": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build-share.ps1",
+    "test:stage6-desktop": "node scripts/release-desktop.cjs",
+    "test:share": "node scripts/share-bridge-test.cjs && node scripts/share-smoke.cjs",
+    "test:packaged": "node scripts/packaged-smoke.cjs",
+    "release:check": "node scripts/release-check.cjs",
     "build": "tsc --noEmit && vite build --config frontend/vite.config.ts",
     "start": "electron .",
-    "package:win": "npm run build && electron-builder --win nsis",
-    "package:dir": "npm run build && electron-builder --win --dir"
+    "package:win": "npm run build && npm run build:share && electron-builder --win nsis",
+    "package:win:signed": "npm run build && npm run build:share && electron-builder --win nsis --config.forceCodeSigning=true",
+    "package:dir": "npm run build && npm run build:share && electron-builder --win --dir"
   },
   "dependencies": {
     "react": "19.2.0",
@@ -40,8 +46,16 @@
     ],
     "extraResources": [
       {
-        "from": "backend/target/pos-0.5.0.jar",
+        "from": "docs",
+        "to": "docs"
+      },
+      {
+        "from": "backend/target/pos-0.6.0.jar",
         "to": "backend/pos.jar"
+      },
+      {
+        "from": "native/bin",
+        "to": "native"
       },
       {
         "from": "runtime",
@@ -53,7 +67,8 @@
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false
     }
   }
 }

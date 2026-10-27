@@ -1,15 +1,17 @@
 # East of Town Men's Fashion
-Offline Windows retail application, implemented in the requested stages. **Current milestone: Stage 5, version 0.5.0 — reversals, expenses and monthly profit/loss, user recovery, discount modes, receipt sharing preparation and verified backup/restore.**
+Offline Windows retail application, implemented in the requested stages. **Current milestone: Stage 6 release candidate 0.6.0 — native Windows receipt sharing, country/mobile validation, live billing totals and release verification. Trusted signing, clean-machine and shop hardware acceptance remain required.**
+
+Current release limitation: this PC's Code Integrity policy blocks the freshly rebuilt unsigned share helper and NSIS bootstrap. The directory application and ordinary billing/restart tests passed; Windows sharing needs trusted signing/device-policy acceptance here. Use the manual receipt fallback meanwhile. The incomplete installer is marked .failed. See [actual Stage 6 evidence](docs/STAGE_6_TEST_RESULTS.md); do not treat this candidate as a signed production installer.
 
 Version 0.4.1 fixes startup for the released Stage 3 migration checksum without resetting data. See [upgrade diagnosis and validation](docs/UPGRADE_0_4_1.md). A restart alone cannot fix version 0.4.0's checksum mismatch; use the corrected build.
 
 Implemented: persistent catalog/categories/variants, exact integer-paise prices, stock ledger and history, administrator/billing login, audited stock adjustments, Excel template/upload/mapping/validation/confirmation/history, error workbook export, Code 128 label preview/PDF/Windows print submission, configurable dimensions/printer and test printing. No business demo data or default credentials are seeded.
 
-Stage 3 adds barcode POS billing, authorized discounts, per-variant tax, cash/UPI/card/split payments, atomic stock deduction, durable retries, invoice search and 58/80 mm PDF/print/reprint receipts. Stage 4 adds customers with audited administrator corrections, paged purchase history, date-filtered dashboard and sales/payment/stock/customer/inventory/profit reports with Excel/PDF export. Stage 5 adds returns/refunds/cancellations, user recovery/access controls, percentage/INR discounts, operating expenses/monthly net profit/loss, WhatsApp PDF/PNG preparation and verified backup/restore. Final release acceptance remains Stage 6. Physical printer/scanner calibration requires your devices. See [Stage 5 operating and safety details](docs/STAGE_5.md), [Stage 5 test evidence](docs/STAGE_5_TEST_RESULTS.md), [future migration](docs/CLOUD_MIGRATION.md), [Stage 4 features](docs/STAGE_4.md), [Stage 4 verification](docs/STAGE_4_TEST_RESULTS.md), [Stage 3 billing](docs/STAGE_3.md), [database schema](docs/SCHEMA.md), [stage index](docs/STAGES.md) and [roadmap](docs/ROADMAP.md).
+Stage 3 adds barcode POS billing, authorized discounts, per-variant tax, cash/UPI/card/split payments, atomic stock deduction, durable retries, invoice search and 58/80 mm PDF/print/reprint receipts. Stage 4 adds customers with audited administrator corrections, paged purchase history, date-filtered dashboard and sales/payment/stock/customer/inventory/profit reports with Excel/PDF export. Stage 5 adds returns/refunds/cancellations, user recovery/access controls, percentage/INR discounts, operating expenses/monthly net profit/loss, WhatsApp PDF/PNG preparation and verified backup/restore. Stage 6 adds country-based customer mobile validation, current sharing contacts without rewriting historical invoices, live backend-priced line totals, native Windows Share with receipt files, packaged acceptance and release/signing checks. See [Stage 6](docs/STAGE_6.md), [verification](docs/STAGE_6_TEST_RESULTS.md) and [release/handover](docs/RELEASE.md). Physical printer/scanner calibration requires your devices. See [Stage 5 operating and safety details](docs/STAGE_5.md), [Stage 5 test evidence](docs/STAGE_5_TEST_RESULTS.md), [future migration](docs/CLOUD_MIGRATION.md), [Stage 4 features](docs/STAGE_4.md), [Stage 4 verification](docs/STAGE_4_TEST_RESULTS.md), [Stage 3 billing](docs/STAGE_3.md), [database schema](docs/SCHEMA.md), [stage index](docs/STAGES.md) and [roadmap](docs/ROADMAP.md).
 
 ## Development on Windows
 
-Prerequisites: Windows 10/11 x64, JDK 21 or 25, Maven 3.9+, Node.js 22.12+ (24 LTS recommended). Initial dependency downloads require internet. Running the built app uses local resources only.
+Prerequisites: Windows 10/11 x64 with .NET Framework 4.8, JDK 21 or 25, Maven 3.9+, Node.js 22.12+ (24 LTS recommended). Initial dependency downloads require internet. Running the built app uses local resources only.
 
 ```powershell
 cd C:\Ammu\EastOfTown\EastOfTownPOS-App\backend
@@ -17,6 +19,7 @@ mvn clean package
 cd ..
 npm.cmd ci
 npm.cmd run build
+npm.cmd run build:share
 npm.cmd start
 ```
 
@@ -40,6 +43,8 @@ Run `mvn test` in `backend/` for the integration suite. After building the backe
 
 Read [operating steps](docs/USER_MANUAL.md), [architecture](docs/ARCHITECTURE.md), [dependencies](docs/DEPENDENCIES.md), and [milestones](docs/ROADMAP.md).
 
-Stage 4: administrators see **Dashboard**, **Customers** and **Reports** in the sidebar. Billing users can create/view customers and purchases; store reports, cost data and corrections require an administrator. Date filters use Indian time. Inventory valuation is current; gross profit estimates exclude missing-cost lines and operating expenses. See STAGE_4.md for all definitions and limits. `npm.cmd run test:desktop` now runs all four desktop suites; `npm.cmd run test:reports-desktop` runs Stage 4 alone. No extra dependency installation is required when the existing locked packages are already installed.
+Stage 4: administrators see **Dashboard**, **Customers** and **Reports** in the sidebar. Billing users can create/view customers and purchases; store reports, cost data and corrections require an administrator. Date filters use Indian time. Inventory valuation is current; gross profit estimates exclude missing-cost lines and operating expenses. See STAGE_4.md for all definitions and limits. `npm.cmd run test:desktop` now runs all five desktop suites; `npm.cmd run test:reports-desktop` runs Stage 4 alone. No extra dependency installation is required when the existing locked packages are already installed.
 
 Stage 5: sign in as Administrator and open **Business controls** for Returns, Expenses, Backup and restore, and User access. **New bill** has INR/% selectors. **Reports → Monthly net profit / loss** uses recorded expenses and historical costs; missing costs are explicit. **Saved invoice → Share purchase receipt** saves an 80 mm PDF/PNG and opens WhatsApp; attach/review/send manually. No message is sent automatically and no delivery is claimed. `node scripts/controls-desktop.cjs` verifies Stage 5 against its own temporary profile, with external WhatsApp opening mocked.
+
+Stage 6: **New Bill** shows live line totals including quantity, discounts and tax while retaining the per-item price. **Customers** and checkout creation require a country and national mobile; India defaults to +91 with exactly ten digits beginning 6–9. An administrator corrects invalid legacy contacts in Customers. **Saved invoice → Send via Windows Share** supplies the PDF/PNG attachment; select WhatsApp, the customer and Send there. **Save and open WhatsApp** is the manual fallback. Windows controls which targets appear; opening the panel does not prove sending or delivery. Barcode orientation remains unchanged. Source/package releases share the same existing data folder. See docs/RELEASE.md for exact build, signing and acceptance commands.

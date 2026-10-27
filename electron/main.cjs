@@ -3,9 +3,15 @@ const { spawn } = require('node:child_process');
 const { randomBytes } = require('node:crypto');
 const path = require('node:path');
 const fs = require('node:fs');
+const windowsShare = require('./windows-share.cjs');
 const net = require('node:net');
 let backend, window;
+let shuttingDown=false;
 let userSession='';
+// Keep the same business data folder across source, packaged and upgraded releases.
+app.setPath('userData',path.join(app.getPath('appData'),'east-of-town-pos'));
+const acceptance=process.argv.find(a=>a.startsWith('--acceptance-profile='));
+if(acceptance){const selected=path.resolve(acceptance.slice('--acceptance-profile='.length));if(!/^eot-acceptance-[a-f0-9-]{36}$/.test(path.basename(selected)))throw Error('Invalid acceptance profile');app.setPath('userData',selected);}
 if (!app.isPackaged && process.env.EOT_TEST_PROFILE) app.setPath('userData', path.resolve(process.env.EOT_TEST_PROFILE));
 const token = randomBytes(32).toString('hex');
 let port;
@@ -16,7 +22,7 @@ app.whenReady().then(async () => {
   try {
     port = await new Promise((resolve,reject) => { const s=net.createServer(); s.on('error',reject); s.listen(0,'127.0.0.1',()=>{const p=s.address().port;s.close(()=>resolve(p));}); });
     const base = app.isPackaged ? process.resourcesPath : app.getAppPath();
-    const jar = app.isPackaged ? path.join(base,'backend','pos.jar') : path.join(base,'backend','target','pos-0.5.0.jar');
+    const jar = app.isPackaged ? path.join(base,'backend','pos.jar') : path.join(base,'backend','target','pos-0.6.0.jar');
     const bundledJava=path.join(base,'runtime','bin','java.exe');
     const java = app.isPackaged || fs.existsSync(bundledJava) ? bundledJava : process.env.JAVA_HOME ? path.join(process.env.JAVA_HOME,'bin','java.exe') : 'java';
     if(!fs.existsSync(path.join(app.getAppPath(),'dist','index.html'))) throw new Error('Build the frontend first: npm.cmd run build, then npm.cmd start');
@@ -27,7 +33,7 @@ app.whenReady().then(async () => {
     backend=spawn(java,['-jar',jar],{windowsHide:true,stdio:['ignore',log,log],env:{...process.env,EOT_PORT:String(port),EOT_API_TOKEN:token,EOT_DATA_DIR:data}});
     let failure;
     backend.on('error',e=>{failure=e;});
-    backend.on('exit',()=>{failure=new Error('The local database service stopped. Restart the application.'); if(window) dialog.showErrorBox('Database service stopped',failure.message);});
+    backend.on('exit',()=>{if(shuttingDown)return;failure=new Error('The local database service stopped. Restart the application.'); if(window) dialog.showErrorBox('Database service stopped',failure.message);});
     let ready=false;
     for(let i=0;i<120;i++) {
       if(failure) throw failure;
@@ -35,6 +41,7 @@ app.whenReady().then(async () => {
       await new Promise(r=>setTimeout(r,500));
     }
     if(!ready) throw new Error('Database startup timed out. Check backend.log in the application data folder.');
+    windowsShare.cleanupShares(path.join(app.getPath('userData'),'shared-receipts'));
     window=new BrowserWindow({width:1440,height:960,minWidth:1000,minHeight:720,backgroundColor:'#f4f3ee',webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
     window.webContents.setWindowOpenHandler(()=>({action:'deny'}));
     window.webContents.on('will-navigate',event=>event.preventDefault());
@@ -50,7 +57,7 @@ app.whenReady().then(async () => {
       const allowed=(method==='GET' && /^\/(health|categories|variants(?:\?search=[^#]*)?|auth\/status|imports\/history|stock\/movements\/[a-f0-9-]{36}|labels\/(printers|settings)|billing\/invoices(?:\/[a-f0-9-]{36})?)$/.test(route)) || (method==='POST' && (/^\/auth\/(setup|login|logout|users|recover|recovery-code)$/.test(route) || ['/categories','/variants','/stock/adjustments','/labels/preview','/labels/print','/labels/settings','/billing/checkout'].includes(route) || /^\/imports\/[a-f0-9-]{36}\/(preview|commit)$/.test(route))) || (method==='PUT' && /^\/variants\/[a-f0-9-]{36}$/.test(route));
       const billingAllowed=(method==='GET' && /^\/billing\/(settings|taxes|customers(?:\?search=[^#]*)?|invoices(?:\?[^#]*)?|invoices\/[a-f0-9-]{36}|requests\/[a-f0-9-]{36})$/.test(route)) || (method==='POST' && (/^\/billing\/(quote|checkout|customers|settings|taxes|test-print)$/.test(route) || /^\/billing\/invoices\/[a-f0-9-]{36}\/print$/.test(route)));
       const reportsAllowed=method==='GET' && /^\/reports\/(dashboard|daily|monthly|yearly|products|categories|variants|payments|stock|inventory|profit|net-profit|expenses|returns|customers|customer-history)(?:\?[^#]*)?$/.test(route);
-      const customersAllowed=(method==='GET' && /^\/customers(?:\?[^#]*|\/duplicates\?[^#]*|\/[a-f0-9-]{36}(?:\/changes|\?[^#]*)?)?$/.test(route)) || (method==='POST' && route==='/customers') || (method==='PUT' && /^\/customers\/[a-f0-9-]{36}$/.test(route));
+      const customersAllowed=(method==='GET' && /^\/customers(?:\?[^#]*|\/countries|\/duplicates\?[^#]*|\/[a-f0-9-]{36}(?:\/changes|\?[^#]*)?)?$/.test(route)) || (method==='POST' && route==='/customers') || (method==='PUT' && /^\/customers\/[a-f0-9-]{36}$/.test(route));
       const controlsAllowed=(method==='GET' && /^(\/backups|\/auth\/users|\/controls\/(expenses|expense-categories|returns\/[a-f0-9-]{36}|return\/[a-f0-9-]{36}|return-status\/[a-f0-9-]{36}))$/.test(route)) || (method==='POST' && /^(\/backups(?:\/settings|\/cancel-restore)?|\/auth\/users\/[a-f0-9-]{36}\/(reset|state)|\/controls\/(returns(?:\/preview)?|expenses(?:\/[a-f0-9-]{36}\/void)?|expense-categories))$/.test(route));
       if(!allowed && !billingAllowed && !reportsAllowed && !customersAllowed && !controlsAllowed) throw new Error('Unsupported operation');
       const result=await api(method,route,body);
@@ -88,6 +95,12 @@ app.whenReady().then(async () => {
         const confirm=await dialog.showMessageBox(window,{type:'warning',buttons:['Cancel','Validate and prepare restore'],defaultId:0,cancelId:0,message:'Restore replaces all current records after restart.',detail:'A rescue copy will be kept. You must use the login credentials in the backup. Close the app immediately after preparation.'});if(confirm.response!==1)return {};
         return api('POST','/backups/restore',{path:chosen.filePaths[0]});
       }
+      if(input?.kind==='windows-share' && /^[a-f0-9-]{36}$/.test(input.invoiceId) && ['pdf','png'].includes(input.format)){
+        const meta=await api('POST','/billing/invoices/'+input.invoiceId+'/share-file');
+        const confirmed=await dialog.showMessageBox(window,{type:'question',buttons:['Cancel','Open Windows Share'],defaultId:0,cancelId:0,message:'Share receipt '+meta.invoiceNumber+'?',detail:'The receipt file is included. Choose WhatsApp and the correct customer in Windows Share. Review and send there. Only installed apps that accept this file type appear.'});if(confirmed.response!==1)return {};
+        const bytes=await api('GET','/billing/invoices/'+input.invoiceId+'/'+input.format+'?width=80',undefined,true);
+        return windowsShare.shareReceipt({base:app.isPackaged?process.resourcesPath:app.getAppPath(),directory:path.join(app.getPath('userData'),'shared-receipts'),invoiceId:input.invoiceId,invoiceNumber:meta.invoiceNumber,format:input.format,bytes});
+      }
       if(input?.kind==='whatsapp' && /^[a-f0-9-]{36}$/.test(input.invoiceId) && ['pdf','png'].includes(input.format)){
         const meta=await api('POST','/billing/invoices/'+input.invoiceId+'/share',{phone:input.phone});
         const confirm=await dialog.showMessageBox(window,{type:'question',buttons:['Cancel','Save receipt and open WhatsApp'],defaultId:0,cancelId:0,message:'Share purchase receipt with '+meta.phone+'?',detail:'The customer must agree. Save the file, attach it in WhatsApp and review before sending. The app cannot confirm delivery.'});if(confirm.response!==1)return {};
@@ -103,5 +116,5 @@ app.whenReady().then(async () => {
   } catch(e) { dialog.showErrorBox('Unable to start East of Town',e.message);app.quit(); }
 });
 app.on('window-all-closed',()=>app.quit());
-app.on('before-quit',()=>{if(backend){backend.removeAllListeners('exit');backend.kill();}});
+app.on('before-quit',()=>{shuttingDown=true;windowsShare.stopShares();if(backend){backend.removeAllListeners('exit');backend.kill();}});
 }
