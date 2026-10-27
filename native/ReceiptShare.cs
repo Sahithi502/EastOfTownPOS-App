@@ -34,25 +34,70 @@ internal static class ReceiptShare {
             var factory = (IShareInterop)WindowsRuntimeMarshal.GetActivationFactory(typeof(DataTransferManager));
             if(args[0] == "--probe") { Console.WriteLine("attachment-ready"); return 0; }
             Application.EnableVisualStyles();
-            using(var form = new Form { Text="East of Town — Share receipt", Width=500, Height=190, StartPosition=FormStartPosition.CenterScreen }) {
+            using(var form = new Form { Text="East of Town — Share receipt", Width=540, Height=280, StartPosition=FormStartPosition.CenterScreen }) {
                 var info = new Label { Dock=DockStyle.Fill, Padding=new Padding(18), Text="Choose WhatsApp in Windows Share, select the customer, and send.\n\n"+Path.GetFileName(file)+"\n\nIf WhatsApp is missing, close this window and use Save and open WhatsApp in the POS." };
                 form.Controls.Add(info);
                 var close = new Button { Text="Close sharing", Dock=DockStyle.Bottom, Height=32 };
                 close.Click += (s,e) => form.Close(); form.Controls.Add(close);
+                var open = new Button { Text="Open Windows Share", Dock=DockStyle.Bottom, Height=40, Enabled=false };
+                form.Controls.Add(open);
                 DataTransferManager manager = null;
-                bool attached = false;
+                bool attached = false, attempted = false;
                 var timer = new Timer { Interval = args[0]=="--self-test" ? 15000 : 300000 };
+                var activateTimer = new Timer { Interval=250 };
+                var retryTimer = new Timer { Interval=3000 };
                 timer.Tick += (s,e) => { timer.Stop(); form.Close(); };
-                form.Shown += (s,e) => {
+                retryTimer.Tick += (s,e) => {
+                    retryTimer.Stop();
+                    if(!attached) {
+                        info.Text="Windows has not requested the receipt attachment yet.\n\nClick Open Windows Share to try again, then choose WhatsApp and the customer.\n\n"+Path.GetFileName(file)+"\n\nIf sharing remains unavailable, close this window and use Save and open WhatsApp in the POS.";
+                        Console.WriteLine("share-retry-available"); Console.Out.Flush();
+                    }
+                };
+                Action showShare = () => {
+                    try {
+                        attempted=true; attached=false;
+                        info.Text="Opening Windows Share with "+Path.GetFileName(file)+".\n\nChoose WhatsApp, select the customer, review the attachment and send there.";
+                        factory.ShowShareUIForWindow(form.Handle);
+                        Console.WriteLine("share-opened"); Console.Out.Flush();
+                        if(!attached) retryTimer.Start();
+                    } catch(Exception error) {
+                        info.Text="Windows sharing could not open. Close any other Windows Share panel, then click Open Windows Share to retry.\n\nOr close this window and use Save and open WhatsApp in the POS.";
+                        Console.Error.WriteLine("Windows sharing failed: "+error.Message);
+                        Console.WriteLine("share-retry-available"); Console.Out.Flush();
+                    }
+                };
+                open.Click += (s,e) => { activateTimer.Stop(); showShare(); };
+                // Shown runs before activation has settled. Wait for an active owner and
+                // another message-loop turn; never reactivate it over the Share panel.
+                activateTimer.Tick += (s,e) => {
+                    activateTimer.Stop();
+                    if(!attempted && Form.ActiveForm==form) showShare();
+                };
+                form.Activated += (s,e) => { if(open.Enabled && !attempted) activateTimer.Start(); };
+                form.Load += (s,e) => {
                     try {
                         var iid = new Guid("A5CAEE9B-8708-49D1-8D36-67D25A8DA00C");
                         manager = factory.GetForWindow(form.Handle, ref iid);
-                        manager.DataRequested += (sender,request) => { request.Request.Data=data; attached=true; Console.WriteLine("attachment-provided"); Console.Out.Flush(); };
-                        factory.ShowShareUIForWindow(form.Handle);
-                        Console.WriteLine("share-opened"); Console.Out.Flush(); timer.Start();
+                        manager.DataRequested += (sender,request) => {
+                            var requested=request.Request.Data;
+                            requested.Properties.Title=data.Properties.Title;
+                            requested.Properties.Description=data.Properties.Description;
+                            requested.RequestedOperation=DataPackageOperation.Copy;
+                            requested.SetStorageItems(new IStorageItem[]{stored}, true);
+                            if(Path.GetExtension(file).Equals(".png",StringComparison.OrdinalIgnoreCase)) requested.SetBitmap(Windows.Storage.Streams.RandomAccessStreamReference.CreateFromFile(stored));
+                            attached=true; retryTimer.Stop();
+                            info.Text="Windows requested the receipt file. Choose WhatsApp, select the customer, review the attachment and send there. Delivery is not confirmed.\n\n"+Path.GetFileName(file)+"\n\nYou can reopen Windows Share using the button below.";
+                            Console.WriteLine("attachment-provided"); Console.Out.Flush();
+                        };
+                        open.Enabled=true;
                     } catch(Exception error) { Console.Error.WriteLine("Windows sharing failed: "+error.Message); form.Close(); }
                 };
-                Application.Run(form); timer.Dispose(); GC.KeepAlive(manager);
+                form.Shown += (s,e) => {
+                    timer.Start(); retryTimer.Start();
+                    if(Form.ActiveForm==form) activateTimer.Start();
+                };
+                Application.Run(form); timer.Dispose(); activateTimer.Dispose(); retryTimer.Dispose(); GC.KeepAlive(manager);
                 if(args[0]=="--self-test" && !attached) throw new InvalidOperationException("Windows did not request the receipt attachment.");
             }
             return 0;
