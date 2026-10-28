@@ -57,5 +57,8 @@ jobs:
           path: |
             backend/target/surefire-reports/*.xml
             docs/screenshots/stage6-*.png
+            docs/screenshots/receipt-reference-preview-*.png
+            backend/target/test-fixtures/reference-receipt-*.pdf
+            backend/target/test-fixtures/reference-receipt-*.png
             docs/runtime-manifest.json
             release/release-manifest.json

@@ -238,3 +238,7 @@ If WhatsApp does not appear, try the other file format or use **Save and open Wh
 ![Receipt sharing options](screenshots/stage6-receipt-sharing.png)
 
 See RELEASE.md for Windows installation, upgrade, persistent-data/backup and signing requirements. Stage 6 physical printer, scanner, reboot and real WhatsApp acceptance must be completed on the shop devices.
+
+### Sales receipt layout
+
+The invoice preview, receipt/reprint, PDF and shared PNG now use a centered shop heading, dashed separators, ITEM / QTY / AMOUNT table, bold total and uppercase configured footer. AMOUNT shows quantity multiplied by saved unit price before adjustments; discount/tax and net line total remain visible in the item details. Subtotal, discounts, tax and final total therefore reconcile without counting a discount twice. Split payments and reversal/refund records remain visible. Select 58 mm or 80 mm in the saved receipt. See [Receipt design and test samples](RECEIPT_DESIGN.md) for examples and verification.
