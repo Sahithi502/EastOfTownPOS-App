@@ -52,6 +52,8 @@ Stage 6 software changes may be merged after successful CI while these release g
 
 ## Operator regression cases
 
+Receipt design follow-up, 28 October: [RECEIPT_DESIGN.md](RECEIPT_DESIGN.md) documents the screenshot-based layout across preview, printing, PDF and shared PNG. The backend suite increased to 97 passing tests; six cover receipt layout and the PNG endpoint is checked against the PDF pixel for pixel. Both widths, long/large text, returns, split payments and zero-total/guest cases were verified. Billing and Stage 6 desktop tests passed in isolated profiles. Physical printer calibration remains an operator acceptance item.
+
 The 27 October Windows Share timeout follow-up is documented in [WINDOWS_SHARE_FIX.md](WINDOWS_SHARE_FIX.md): six bridge tests and the expanded Stage 6 desktop regression pass; generated PDF and PNG files were actually requested by Windows Share. The native retry button was exercised with PDF. WhatsApp was visible as a target; no target/recipient was selected and nothing was sent. Busy-flow behavior and background activation limits are recorded separately from successful attachment preparation.
 
 The 28 October session-lifecycle follow-up in the same document supersedes the old rule that refused every second sharing request. Thirteen bridge tests, the renderer build and isolated Stage 6 desktop regression passed. The actual managed native test confirmed PDF attachment, reuse of the PDF source on repeat, orderly replacement, PNG attachment and parent-pipe shutdown. The repeat returned an explicit pending result when Windows refused foreground activation; it did not claim another attachment or delivery. No message was sent.

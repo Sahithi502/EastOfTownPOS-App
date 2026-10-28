@@ -50,6 +50,10 @@
         "to": "docs"
       },
       {
+        "from": "output/pdf",
+        "to": "output/pdf"
+      },
+      {
         "from": "backend/target/pos-0.6.0.jar",
         "to": "backend/pos.jar"
       },
