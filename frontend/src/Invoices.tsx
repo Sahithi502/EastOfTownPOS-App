@@ -4,7 +4,7 @@ import {ReceiptConfig,Sale,invoiceApi,receiptPrint} from './billingApi';
 export function ReceiptView({sale,config,onClose}:{sale:Sale;config:ReceiptConfig;onClose:()=>void}){
  const [width,setWidth]=useState(config.receiptWidthMm),[printer,setPrinter]=useState(config.printer),[printers,setPrinters]=useState<string[]>([]),[message,setMessage]=useState(''),[error,setError]=useState(sale.printError||''),[busy,setBusy]=useState(false);
  const [sharePhone,setSharePhone]=useState(String(sale.sharePhone||'')),[shareFormat,setShareFormat]=useState('pdf');
- async function share(kind='windows-share'){setBusy(true);setError('');try{const r=await window.catalog.maintenance({kind,invoiceId:sale.invoice.id,phone:sharePhone,format:shareFormat});if(r.message)setMessage(r.message)}catch(e){setError(String(e))}finally{setBusy(false)}}
+ async function share(kind='windows-share'){setBusy(true);setMessage('');setError('');try{const r=await window.catalog.maintenance({kind,invoiceId:sale.invoice.id,phone:sharePhone,format:shareFormat});if(r.message)setMessage(r.message)}catch(e){setError(String(e))}finally{setBusy(false)}}
  const shop=JSON.parse(sale.invoice.shop_snapshot||'{}');
  useEffect(()=>{if(sale.printError)setError(sale.printError)},[sale.printError]);
  useEffect(()=>{api('GET','/labels/printers').then(setPrinters).catch(e=>setError(String(e)))},[]);

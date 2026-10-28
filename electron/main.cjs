@@ -97,7 +97,7 @@ app.whenReady().then(async () => {
       }
       if(input?.kind==='windows-share' && /^[a-f0-9-]{36}$/.test(input.invoiceId) && ['pdf','png'].includes(input.format)){
         const meta=await api('POST','/billing/invoices/'+input.invoiceId+'/share-file');
-        const confirmed=await dialog.showMessageBox(window,{type:'question',buttons:['Cancel','Open Windows Share'],defaultId:0,cancelId:0,message:'Share receipt '+meta.invoiceNumber+'?',detail:'The receipt file is included. Choose WhatsApp and the correct customer in Windows Share. Review and send there. Only installed apps that accept this file type appear.'});if(confirmed.response!==1)return {};
+        const confirmed=await dialog.showMessageBox(window,{type:'question',buttons:['Cancel','Open Windows Share'],defaultId:0,cancelId:0,message:'Share receipt '+meta.invoiceNumber+'?',detail:'The receipt file is included. Choose WhatsApp and the correct customer in Windows Share. Review and send there. Sharing a different receipt or format closes the previous sharing window. Only installed apps that accept this file type appear.'});if(confirmed.response!==1)return {};
         const bytes=await api('GET','/billing/invoices/'+input.invoiceId+'/'+input.format+'?width=80',undefined,true);
         return windowsShare.shareReceipt({base:app.isPackaged?process.resourcesPath:app.getAppPath(),directory:path.join(app.getPath('userData'),'shared-receipts'),invoiceId:input.invoiceId,invoiceNumber:meta.invoiceNumber,format:input.format,bytes});
       }

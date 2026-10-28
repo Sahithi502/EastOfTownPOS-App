@@ -37,6 +37,7 @@ jobs:
           npm.cmd run build:share
           npm.cmd run test:share
           node scripts/share-smoke.cjs --png
+          node scripts/share-session-test.cjs
       - name: API and restart verification
         run: npm.cmd run test:api
       - name: Electron catalog, billing, controls and Stage 6 acceptance
