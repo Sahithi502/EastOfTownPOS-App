@@ -24,3 +24,22 @@ The reported error occurred after the receipt had been saved: the native source 
 Restart the source application to load the changed Electron bridge. From a saved test invoice, select PDF and **Send via Windows Share**. If necessary, switch to the source window and click **Open Windows Share**. Confirm the file preview before choosing WhatsApp and the intended test recipient. Repeat with PNG, cancel and reopen, then close the source before sharing another invoice. Billing must remain saved in every case.
 
 The prior Stage 6 release gates still apply: trusted signing, actual WhatsApp target compatibility/delivery, printers and clean-machine installer acceptance. This patch does not disable Windows protection or automatically send receipts. See USER_MANUAL.md and STAGE_6_TEST_RESULTS.md.
+
+## Follow-up: repeated-click session lifecycle — 28 October 2026
+
+The first fix retained a source for retry but still rejected every later POS click while any source process existed. The operator therefore saw **Close the existing receipt sharing window before opening another** even when retrying the same receipt. The previous six-test suite explicitly expected that refusal; it did not verify the desired repeated-click workflow.
+
+The bridge now serializes requests, reuses a live source for the same invoice/format, and closes a previous source before switching invoice/format. Managed helpers accept only `open` and `close` through a private parent-owned stdin pipe. Closing the pipe also closes the helper. Replacement waits for process exit, uses a bounded termination fallback, and refuses overlap if the previous process cannot be stopped. Late exit events cannot clear a newer session. No arbitrary file/recipient command is accepted.
+
+The helper registers cancellation and target-completion handlers on the request package and closes when Windows signals either event. It can bring an existing owned Share popup forward; a rejected foreground request is reported honestly and does not claim focus or another file request. Every retry waits for fresh file-request signals before confirming attachment. Neither Windows target completion nor attachment preparation confirms WhatsApp delivery. The receipt view clears old sharing notices at the start of a new action.
+
+Verification:
+
+- Thirteen bridge tests pass: readiness, actual-request confirmation, repeat/resume, existing modal, invoice/format replacement, cancellation, concurrent clicks, stale exit, policy and pipe failure, input validation, delayed close, stuck close and fresh retry signals.
+- Renderer build and Stage 6 Electron regression passed with isolated data. That suite mocks the chooser and verifies real receipt bytes and invoice persistence.
+- Real native `share-session-test.cjs --show` passed on 28 October: managed readiness/close/parent EOF; first PDF returned `attachment-provided`; the second request reused that helper and returned `awaiting-share` because Windows rejected foreground activation of its already-open panel; switching to PNG waited for the old source to exit, then returned `attachment-provided`. Exactly two helpers were spawned for three requests. No target selected and nothing sent.
+- CI now tests real managed readiness, graceful close and parent EOF in addition to both format probes. Run `node scripts/share-session-test.cjs` without `--show` to test lifecycle without opening the chooser. `--show` opens the native chooser with generated receipts; it never chooses a target or presses Send.
+
+Operator regression: share a saved test invoice; click again for the same invoice; cancel and retry; switch PDF to PNG; share a different invoice. The old close-existing-window error must not appear during these ordinary operations. Verify the attachment in WhatsApp before sending to an approved test recipient. Existing shop data and invoice/stock records are unaffected by native sharing-session changes.
+
+Reference: [Microsoft's Windows Share source integration](https://learn.microsoft.com/en-us/windows/apps/develop/windows-integration/integrate-sharesheet-send) describes per-window transfer managers, file packages, and source cancellation/completion events. The demo in the chat **Bill Delivery Options** was not accessible as code through thread retrieval (it returned content references); its implementation and host environment have not been verified or assumed equivalent to Electron.

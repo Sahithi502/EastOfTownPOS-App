@@ -9,6 +9,9 @@ using Windows.Storage;
 
 // Runs outside the renderer. Windows owns the target chooser and the target owns Send.
 internal static class ReceiptShare {
+    [DllImport("user32.dll")] static extern IntPtr GetLastActivePopup(IntPtr window);
+    [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr window);
+    [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr window);
     [ComImport, Guid("3A3DCD6C-3EAB-43DC-BCDE-45671CE800C8"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     interface IShareInterop {
         DataTransferManager GetForWindow(IntPtr window, [In] ref Guid iid);
@@ -16,7 +19,7 @@ internal static class ReceiptShare {
     }
     [STAThread] static int Main(string[] args) {
         try {
-            if(args.Length != 2 || !new[]{"--share","--probe","--self-test"}.Contains(args[0])) throw new ArgumentException("Choose a receipt file to share.");
+            if(args.Length != 2 || !new[]{"--share","--managed","--probe","--self-test"}.Contains(args[0])) throw new ArgumentException("Choose a receipt file to share.");
             string file = Path.GetFullPath(args[1]);
             if(!File.Exists(file) || !new[]{".pdf",".png"}.Contains(Path.GetExtension(file).ToLowerInvariant())) throw new ArgumentException("Receipt PDF or PNG not found.");
             var operation = StorageFile.GetFileFromPathAsync(file);
@@ -56,6 +59,7 @@ internal static class ReceiptShare {
                 };
                 Action showShare = () => {
                     try {
+                        Console.WriteLine("share-attempt-started"); Console.Out.Flush();
                         attempted=true; attached=false;
                         info.Text="Opening Windows Share with "+Path.GetFileName(file)+".\n\nChoose WhatsApp, select the customer, review the attachment and send there.";
                         factory.ShowShareUIForWindow(form.Handle);
@@ -74,7 +78,7 @@ internal static class ReceiptShare {
                     activateTimer.Stop();
                     if(!attempted && Form.ActiveForm==form) showShare();
                 };
-                form.Activated += (s,e) => { if(open.Enabled && !attempted) activateTimer.Start(); };
+                form.Activated += (s,e) => { if(args[0]!="--managed" && open.Enabled && !attempted) activateTimer.Start(); };
                 form.Load += (s,e) => {
                     try {
                         var iid = new Guid("A5CAEE9B-8708-49D1-8D36-67D25A8DA00C");
@@ -86,6 +90,15 @@ internal static class ReceiptShare {
                             requested.RequestedOperation=DataPackageOperation.Copy;
                             requested.SetStorageItems(new IStorageItem[]{stored}, true);
                             if(Path.GetExtension(file).Equals(".png",StringComparison.OrdinalIgnoreCase)) requested.SetBitmap(Windows.Storage.Streams.RandomAccessStreamReference.CreateFromFile(stored));
+                            requested.ShareCanceled += (package,cancelled) => {
+                                Console.WriteLine("share-cancelled"); Console.Out.Flush();
+                                if(!form.IsDisposed)form.BeginInvoke(new Action(()=>form.Close()));
+                            };
+                            requested.ShareCompleted += (package,completed) => {
+                                // Windows target completion is not WhatsApp delivery confirmation.
+                                Console.WriteLine("share-completed"); Console.Out.Flush();
+                                if(!form.IsDisposed)form.BeginInvoke(new Action(()=>form.Close()));
+                            };
                             attached=true; retryTimer.Stop();
                             info.Text="Windows requested the receipt file. Choose WhatsApp, select the customer, review the attachment and send there. Delivery is not confirmed.\n\n"+Path.GetFileName(file)+"\n\nYou can reopen Windows Share using the button below.";
                             Console.WriteLine("attachment-provided"); Console.Out.Flush();
@@ -94,8 +107,38 @@ internal static class ReceiptShare {
                     } catch(Exception error) { Console.Error.WriteLine("Windows sharing failed: "+error.Message); form.Close(); }
                 };
                 form.Shown += (s,e) => {
-                    timer.Start(); retryTimer.Start();
-                    if(Form.ActiveForm==form) activateTimer.Start();
+                    timer.Start();
+                    if(args[0]=="--managed") {
+                        // Only the parent POS owns this pipe. Commands cannot choose a
+                        // different file or a recipient, and never trigger Send.
+                        var reader=new System.Threading.Thread(()=>{
+                            try {
+                                string command;
+                                while((command=Console.ReadLine())!=null) {
+                                    if(command=="close") { form.BeginInvoke(new Action(()=>form.Close())); return; }
+                                    if(command=="open")form.BeginInvoke(new Action(()=>{
+                                        timer.Stop(); timer.Start();
+                                        var popup=GetLastActivePopup(form.Handle);
+                                        if(popup!=IntPtr.Zero && popup!=form.Handle && IsWindowVisible(popup)) {
+                                            bool focused=SetForegroundWindow(popup);
+                                            Console.WriteLine(focused?"share-existing-active":"share-existing-pending"); Console.Out.Flush(); return;
+                                        }
+                                        if(form.WindowState==FormWindowState.Minimized)form.WindowState=FormWindowState.Normal;
+                                        form.Show(); form.BringToFront(); form.Activate();
+                                        attempted=false; attached=false;
+                                        activateTimer.Start(); retryTimer.Start();
+                                    }));
+                                }
+                                if(!form.IsDisposed)form.BeginInvoke(new Action(()=>form.Close()));
+                            } catch(InvalidOperationException) { }
+                              catch(IOException) { if(!form.IsDisposed)form.BeginInvoke(new Action(()=>form.Close())); }
+                        });
+                        reader.IsBackground=true; reader.Start();
+                        Console.WriteLine("share-window-ready"); Console.Out.Flush();
+                    } else {
+                        retryTimer.Start();
+                        if(Form.ActiveForm==form)activateTimer.Start();
+                    }
                 };
                 Application.Run(form); timer.Dispose(); activateTimer.Dispose(); retryTimer.Dispose(); GC.KeepAlive(manager);
                 if(args[0]=="--self-test" && !attached) throw new InvalidOperationException("Windows did not request the receipt attachment.");
