@@ -1,4 +1,6 @@
 # East of Town Men's Fashion
+
+[BugList and review status](docs/BUGLIST.md) — tracked navigation, user-management and error-message fixes.
 Offline Windows retail application, implemented in the requested stages. **Current milestone: Stage 6 release candidate 0.6.0 — native Windows receipt sharing, country/mobile validation, live billing totals and release verification. Trusted signing, clean-machine and shop hardware acceptance remain required.**
 
 Current release limitation: this PC's Code Integrity policy blocks the freshly rebuilt unsigned share helper and NSIS bootstrap. The directory application and ordinary billing/restart tests passed; Windows sharing needs trusted signing/device-policy acceptance here. Use the manual receipt fallback meanwhile. The incomplete installer is marked .failed. See [actual Stage 6 evidence](docs/STAGE_6_TEST_RESULTS.md); do not treat this candidate as a signed production installer.

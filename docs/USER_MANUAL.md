@@ -20,9 +20,9 @@ The install/build commands are needed after cloning or receiving changes. Normal
 
 On first Stage 2 launch, create a local administrator. Choose a username with 3–40 letters/digits/dot/underscore/hyphen, and a password of at least 12 characters (maximum 72 UTF-8 bytes). The app displays a recovery code once after setup; save it securely. Existing Stage 1 products remain available after automatic migration. Sign in with this account; sign out when handing the computer to another operator. Sessions expire after eight hours or backend restart. After repeated failed logins or recovery attempts, wait a minute before trying again.
 
-If the administrator forgets the password, select **Forgot administrator password?** on the sign-in screen. Enter the administrator username, the saved recovery code and a new password of at least 12 characters. The code is single-use and is cleared after a successful reset. After signing in, open **Users → Administrator recovery → Generate new recovery code** to replace a code that may have been exposed or to provision recovery for an existing Stage 1/early Stage 2 account. Store the newly displayed code securely; it is never stored in readable form and cannot be recovered from the database.
+If the administrator forgets the password, select **Forgot administrator password?** on the sign-in screen. Enter the administrator username, the saved recovery code and a new password of at least 12 characters. The code is single-use and is cleared after a successful reset. After signing in, open **Administration → Business controls → User access → Administrator recovery → Generate new recovery code** to replace a code that may have been exposed or to provision recovery for an existing Stage 1/early Stage 2 account. Store the newly displayed code securely; it is never stored in readable form and cannot be recovered from the database.
 
-Administrators can create billing users in **Users**. Billing users can view catalog/inventory history and print labels. Product/category edits, Excel import, stock adjustments, user creation and label-preference changes require an administrator. These restrictions are checked by the backend as well as the interface.
+Administrators can create billing users in **Administration → Business controls → User access**. Billing users can view catalog/inventory history and print labels. Product/category edits, Excel import, stock adjustments, user creation and label-preference changes require an administrator. These restrictions are checked by the backend as well as the interface.
 
 ## Products and categories — Stage 1
 
@@ -159,7 +159,7 @@ If a report exceeds 20,000 source records, choose a shorter period. Reports reje
 
 ## Stage 5: business controls (version 0.5.0)
 
-Sign in as Administrator. Open **Business controls**; its tabs are Returns, Expenses, Backup and restore, and User access. Scroll the sidebar to reach lower links and Sign out on shorter windows.
+Sign in as Administrator. Open **Business controls**; its tabs are Returns, Expenses, Backup and restore, and User access. The sidebar groups screens under Sales, Catalog and stock, Insights, and Administration. Click a parent heading, or focus it and press Enter/Space, to expand or collapse its submenus. The menu area scrolls independently; Sign out stays at the bottom. Administrator-only groups are hidden for billing users.
 
 ### Discounts in percentage or rupees
 
@@ -187,7 +187,7 @@ In **New bill**, each product line has an INR/% selector. Select the unit, then 
 
 ### Reset a billing-user password
 
-Open **Business controls → User access**. Select the billing user, enter a new password of at least 12 characters, and click **Reset billing password**. Communicate it directly to that user. Their existing sessions end; they sign in using the new password. Administrator password recovery still uses the saved one-time recovery code. Activate/deactivate or change roles here; your own administrator cannot be disabled/demoted. Create new accounts from **Users**.
+Open **Business controls → User access**. Select the billing user, enter a new password of at least 12 characters, and click **Reset billing password**. Communicate it directly to that user. Their existing sessions end; they sign in using the new password. Administrator password recovery still uses the saved one-time recovery code. Activate/deactivate or change roles here; your own administrator cannot be disabled/demoted. Create new accounts in the Create user form on this same User access screen.
 
 ### Prepare a WhatsApp receipt
 
@@ -242,3 +242,8 @@ See RELEASE.md for Windows installation, upgrade, persistent-data/backup and sig
 ### Sales receipt layout
 
 The invoice preview, receipt/reprint, PDF and shared PNG now use a centered shop heading, dashed separators, ITEM / QTY / AMOUNT table, bold total and uppercase configured footer. AMOUNT shows quantity multiplied by saved unit price before adjustments; discount/tax and net line total remain visible in the item details. Subtotal, discounts, tax and final total therefore reconcile without counting a discount twice. Split payments and reversal/refund records remain visible. Select 58 mm or 80 mm in the saved receipt. See [Receipt design and test samples](RECEIPT_DESIGN.md) for examples and verification.
+
+
+## BugList and review status
+
+Open [BUGLIST.md](BUGLIST.md) to review each reported navigation, user-management and error-message change. Implementation status and operator review are separate columns. Validation errors display the actionable message without Electron remote-method prefixes.

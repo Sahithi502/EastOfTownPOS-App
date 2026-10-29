@@ -4,7 +4,9 @@
   "private": true,
   "main": "electron/main.cjs",
   "scripts": {
-    "test:desktop": "node scripts/desktop-smoke.cjs && node scripts/billing-desktop.cjs && node scripts/reports-desktop.cjs && node scripts/controls-desktop.cjs && node scripts/release-desktop.cjs",
+    "test:desktop": "node scripts/desktop-smoke.cjs && node scripts/billing-desktop.cjs && node scripts/reports-desktop.cjs && node scripts/controls-desktop.cjs && node scripts/release-desktop.cjs && node scripts/navigation-desktop.cjs",
+    "test:ui-errors": "node scripts/ui-errors-test.cjs",
+    "test:navigation-desktop": "node scripts/navigation-desktop.cjs",
     "test:reports-desktop": "node scripts/reports-desktop.cjs",
     "test:billing-desktop": "node scripts/billing-desktop.cjs",
     "test:api": "node scripts/backend-smoke.cjs",
