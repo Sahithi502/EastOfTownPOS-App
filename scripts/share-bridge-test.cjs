@@ -63,8 +63,21 @@ test('a late exit from the old source does not clear the newer source',()=>fixtu
 }));
 
 test('policy and broken-pipe failures keep the manual fallback and allow retry',()=>fixture(async()=>{
- const children=[];cp.spawn=()=>{const fake=child();children.push(fake);return fake;};let promise=share.shareReceipt(request());await tick();children[0].emit('error',Error('TEST ONLY policy denied'));await assert.rejects(promise,/trusted signed helper.*Save and open WhatsApp/);
+ const children=[];cp.spawn=()=>{const fake=child();children.push(fake);return fake;};let promise=share.shareReceipt(request());await tick();children[0].emit('error',Error('TEST ONLY policy denied'));await assert.rejects(promise,/trusted signed helper.*invoice is saved.*Save receipt PDF.*manually attach/);
  promise=share.shareReceipt(request());await tick();children[1].stdin.emit('error',Error('TEST ONLY broken pipe'));await assert.rejects(promise,/stopped responding.*Save and open WhatsApp/);
+}));
+
+test('a synchronous spawn UNKNOWN is explained and does not prevent another attempt',()=>fixture(async()=>{
+ const input=request();cp.spawn=()=>{throw Error('spawn UNKNOWN');};
+ await assert.rejects(share.shareReceipt(input),error=>{
+  assert.match(error.message,/trusted signed helper.*invoice is saved.*Save receipt PDF.*manually attach/);
+  assert.doesNotMatch(error.message,/spawn UNKNOWN/);return true;
+ });
+ const records=fs.readFileSync(path.join(input.directory,'sharing.log'),'utf8').trim().split('\n').map(JSON.parse);
+ assert.equal(records.at(-1).event,'source-start-failed');
+ assert.ok(!JSON.stringify(records).includes(input.invoiceNumber));
+ const fake=child();cp.spawn=()=>fake;const next=share.shareReceipt(input);await tick();
+ emit(fake,'share-window-ready\n');attached(fake);assert.equal((await next).state,'attachment-provided');
 }));
 
 test('untrusted file type and invoice filename cannot close a valid sharing session',()=>fixture(async()=>{

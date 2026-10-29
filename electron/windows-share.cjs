@@ -43,6 +43,9 @@ function finish(session,error,result){
   session.pending=null;clearTimeout(pending.timer);
   if(error)pending.reject(error);else pending.resolve(result);
 }
+function startupError(){
+  return Error('Windows could not start the receipt-sharing helper. Windows security may require a trusted signed helper. Your invoice is saved. Use Save receipt PDF, then manually attach the file in WhatsApp.');
+}
 function requestOpen(session){
   try{
     session.child.stdin.write('open\n',error=>{
@@ -79,7 +82,10 @@ async function openReceipt({base,directory,invoiceId,invoiceNumber,format,bytes}
   const file=path.join(directory,'receipt-'+invoiceNumber+'-'+randomUUID()+'.'+format);
   const descriptor=fs.openSync(file,'wx');
   try{fs.writeFileSync(descriptor,bytes);fs.fsyncSync(descriptor);}finally{fs.closeSync(descriptor);}
-  const child=require('node:child_process').spawn(executable,['--managed',file],{windowsHide:true,stdio:['pipe','pipe','pipe']});processes.add(child);
+  let child;
+  try{child=require('node:child_process').spawn(executable,['--managed',file],{windowsHide:true,stdio:['pipe','pipe','pipe']});}
+  catch{trace({directory,info,id:randomUUID()},'source-start-failed');throw startupError();}
+  processes.add(child);
   let closed;const session={child,key,id:randomUUID(),directory,info,ready:false,ended:false,pending:null,closed:new Promise(resolve=>{closed=resolve;})};current=session;
   trace(session,'source-started');
   let output='',error='';
@@ -111,7 +117,7 @@ async function openReceipt({base,directory,invoiceId,invoiceNumber,format,bytes}
   });
   child.stderr.on('data',data=>{error=(error+data.toString()).slice(-1000);});
   child.stdin.on('error',()=>{finish(session,Error('The receipt sharing window stopped responding. Try sharing again or use Save and open WhatsApp.'));child.kill();});
-  child.on('error',()=>{trace(session,'source-start-failed');ended();finish(session,Error('Windows Share could not start. Windows security may require a trusted signed helper. Use Save and open WhatsApp.'));});
+  child.on('error',()=>{trace(session,'source-start-failed');ended();finish(session,startupError());});
   child.on('exit',()=>{trace(session,'source-exited');ended();finish(session,Error('Windows Share could not open'+(error?' ('+error.trim()+')':'')+'. Use Save and open WhatsApp.'));});
   return attempt(session);
 }

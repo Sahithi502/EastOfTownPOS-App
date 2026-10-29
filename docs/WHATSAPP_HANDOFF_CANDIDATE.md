@@ -20,6 +20,14 @@ Local native execution was blocked before startup. Code Integrity events 3033/30
 
 This branch should remain a draft until native verification and the first-attempt receiving-app check succeed. Passing source read-back or CI alone does not prove that WhatsApp received the intended file.
 
+### Startup error follow-up — 29 October 2026
+
+The operator reported `spawn UNKNOWN` when selecting Send via Windows Share. Local Code Integrity events 3033/3077 at 11:51 IST identify Electron attempting to start the unsigned ReceiptShare.exe and being blocked by signing policy. This failure occurs before the chooser or WhatsApp transfer and is separate from the earlier `0.text/plain` attachment.
+
+The bridge now handles synchronous spawn exceptions as well as asynchronous process errors. Both show that Windows could not start the helper, explain the possible trusted-signature requirement, preserve the saved invoice and direct the operator to Save receipt PDF and manually attach it in WhatsApp. A failed startup is recorded without raw exception or customer data. The regression suite covers a synchronous `spawn UNKNOWN`, a subsequent permitted attempt, and the existing asynchronous failure path. This change improves error handling; it cannot grant permission to a binary blocked by Windows policy.
+
+The initial candidate commit bf8777a passed [Windows CI run 32](https://github.com/Sahithi502/EastOfTownPOS-App/actions/runs/40827676472), including 97 backend tests, 20 payload/bridge tests, real native PDF/PNG streamed read-back, desktop regressions and packaged application restart persistence. WhatsApp itself was not tested by CI.
+
 ## Acceptance
 
 1. Use a generated TEST ONLY receipt and the operator's own test chat; verify consent and recipient before any send.
