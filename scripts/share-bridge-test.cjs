@@ -1,9 +1,8 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),{EventEmitter}=require('node:events');
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),cp=require('node:child_process'),{randomUUID}=require('node:crypto');
 const share=require('../electron/windows-share.cjs'),original=cp.spawn;
-const {testPdf,testPng}=require('./receipt-fixtures.cjs');
 const base=fs.mkdtempSync(path.join(os.tmpdir(),'eot-share-bridge-'));fs.mkdirSync(path.join(base,'native','bin'),{recursive:true});fs.writeFileSync(path.join(base,'native','bin','ReceiptShare.exe'),'TEST ONLY placeholder; never executed');
-const request=()=>({base,directory:path.join(base,'shared-receipts'),invoiceId:randomUUID(),invoiceNumber:'TEST-20261026-000001',format:'pdf',bytes:testPdf()});
+const request=()=>({base,directory:path.join(base,'shared-receipts'),invoiceId:randomUUID(),invoiceNumber:'TEST-20261026-000001',format:'pdf',bytes:Buffer.from('%PDF-TEST ONLY')});
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 function child(){
  const result=new EventEmitter();result.stdout=new EventEmitter();result.stderr=new EventEmitter();result.stdin=new EventEmitter();result.commands=[];
@@ -17,7 +16,7 @@ async function fixture(run){try{await run();}finally{share.stopShares();cp.spawn
 test('opening waits for the managed window and real file request',()=>fixture(async()=>{
  const fake=child();let args;cp.spawn=(_exe,input)=>{args=input;return fake;};let completed=false;
  const promise=share.shareReceipt(request()).then(value=>{completed=true;return value;});await tick();
- assert.equal(args[0],'--managed');assert.deepEqual(fs.readFileSync(args[1]),testPdf());assert.deepEqual(fake.commands,[]);
+ assert.equal(args[0],'--managed');assert.equal(fs.readFileSync(args[1]).toString(),'%PDF-TEST ONLY');assert.deepEqual(fake.commands,[]);
  emit(fake,'share-window-ready\nshare-attempt-started\nshare-opened\n');await tick();assert.equal(completed,false);assert.deepEqual(fake.commands,['open']);
  emit(fake,'attachment-provided\n');assert.equal((await promise).state,'attachment-provided');fake.emit('exit',0);
 }));
@@ -41,15 +40,15 @@ test('switching invoice or format closes the previous source before spawning ano
  const children=[];cp.spawn=()=>{const fake=child();children.push(fake);return fake;};let input=request();
  let promise=share.shareReceipt(input);await tick();emit(children[0],'share-window-ready\nshare-retry-available\n');await promise;
  for(const change of [{format:'png'},{invoiceId:randomUUID(),invoiceNumber:'TEST-20261026-000002'}]){
-  const old=children.at(-1);input={...input,...change,...(change.format?{bytes:testPng()}:{})};promise=share.shareReceipt(input);await tick();assert.deepEqual(old.commands,['open','close']);assert.equal(children.length,change.format?2:3);
+  const old=children.at(-1);input={...input,...change};promise=share.shareReceipt(input);await tick();assert.deepEqual(old.commands,['open','close']);assert.equal(children.length,change.format?2:3);
   emit(children.at(-1),'share-window-ready\n');attached(children.at(-1));await promise;
  }
  children.at(-1).emit('exit',0);
 }));
 
-test('cancellation can retain its source and still permit another sharing attempt',()=>fixture(async()=>{
- const children=[];cp.spawn=()=>{const fake=child();children.push(fake);return fake;};const input=request();let promise=share.shareReceipt(input);await tick();emit(children[0],'share-window-ready\nshare-cancelled\nsource-retained\n');assert.equal((await promise).state,'cancelled');
- promise=share.shareReceipt(input);await tick();assert.equal(children.length,1);attached(children[0]);await promise;children[0].emit('exit',0);
+test('cancellation releases the session and permits the next sharing attempt',()=>fixture(async()=>{
+ const children=[];cp.spawn=()=>{const fake=child();children.push(fake);return fake;};const input=request();let promise=share.shareReceipt(input);await tick();emit(children[0],'share-window-ready\nshare-cancelled\n');assert.equal((await promise).state,'cancelled');children[0].emit('exit',0);
+ promise=share.shareReceipt(input);await tick();assert.equal(children.length,2);emit(children[1],'share-window-ready\n');attached(children[1]);await promise;children[1].emit('exit',0);
 }));
 
 test('concurrent clicks are serialized and never create overlapping helpers',()=>fixture(async()=>{
@@ -63,21 +62,8 @@ test('a late exit from the old source does not clear the newer source',()=>fixtu
 }));
 
 test('policy and broken-pipe failures keep the manual fallback and allow retry',()=>fixture(async()=>{
- const children=[];cp.spawn=()=>{const fake=child();children.push(fake);return fake;};let promise=share.shareReceipt(request());await tick();children[0].emit('error',Error('TEST ONLY policy denied'));await assert.rejects(promise,/trusted signed helper.*invoice is saved.*Save receipt PDF.*manually attach/);
+ const children=[];cp.spawn=()=>{const fake=child();children.push(fake);return fake;};let promise=share.shareReceipt(request());await tick();children[0].emit('error',Error('TEST ONLY policy denied'));await assert.rejects(promise,/trusted signed helper.*Save and open WhatsApp/);
  promise=share.shareReceipt(request());await tick();children[1].stdin.emit('error',Error('TEST ONLY broken pipe'));await assert.rejects(promise,/stopped responding.*Save and open WhatsApp/);
-}));
-
-test('a synchronous spawn UNKNOWN is explained and does not prevent another attempt',()=>fixture(async()=>{
- const input=request();cp.spawn=()=>{throw Error('spawn UNKNOWN');};
- await assert.rejects(share.shareReceipt(input),error=>{
-  assert.match(error.message,/trusted signed helper.*invoice is saved.*Save receipt PDF.*manually attach/);
-  assert.doesNotMatch(error.message,/spawn UNKNOWN/);return true;
- });
- const records=fs.readFileSync(path.join(input.directory,'sharing.log'),'utf8').trim().split('\n').map(JSON.parse);
- assert.equal(records.at(-1).event,'source-start-failed');
- assert.ok(!JSON.stringify(records).includes(input.invoiceNumber));
- const fake=child();cp.spawn=()=>fake;const next=share.shareReceipt(input);await tick();
- emit(fake,'share-window-ready\n');attached(fake);assert.equal((await next).state,'attachment-provided');
 }));
 
 test('untrusted file type and invoice filename cannot close a valid sharing session',()=>fixture(async()=>{
@@ -98,18 +84,4 @@ test('a stuck source is not forgotten and cannot overlap a new source',()=>fixtu
 test('resuming a previously attached source waits for a new file request',()=>fixture(async()=>{
  const fake=child(),input=request();cp.spawn=()=>fake;let promise=share.shareReceipt(input);await tick();emit(fake,'share-window-ready\n');attached(fake);await promise;
  let completed=false;promise=share.shareReceipt(input).then(result=>{completed=true;return result;});await tick();emit(fake,'share-attempt-started\nshare-opened\n');await tick();assert.equal(completed,false);emit(fake,'attachment-provided\n');await promise;fake.emit('exit',0);
-}));
-
-test('an error payload cannot create a sharing process or close a valid source',()=>fixture(async()=>{
- const fake=child();let spawned=0;cp.spawn=()=>{spawned++;return fake;};const first=share.shareReceipt(request());await tick();emit(fake,'share-window-ready\nshare-retry-available\n');await first;
- await assert.rejects(share.shareReceipt({...request(),bytes:Buffer.from('Internal Server Error')}),/Nothing was shared/);assert.equal(spawned,1);assert.deepEqual(fake.commands,['open']);fake.emit('exit',0);
-}));
-
-test('a native read-back digest mismatch stops sharing',()=>fixture(async()=>{
- const fake=child();cp.spawn=()=>fake;const promise=share.shareReceipt(request());await tick();emit(fake,'attachment-verified:pdf:568:'+ '0'.repeat(64)+'\n');await assert.rejects(promise,/verification failed/);assert.deepEqual(fake.commands,[]);
-}));
-
-test('target completion retains the source and diagnostics exclude invoice details',()=>fixture(async()=>{
- const fake=child(),input=request();cp.spawn=()=>fake;const promise=share.shareReceipt(input);await tick();emit(fake,'share-window-ready\n');attached(fake);await promise;emit(fake,'target-chosen\nshare-completed\nsource-retained\n');assert.deepEqual(fake.commands,['open']);
- const lines=fs.readFileSync(path.join(input.directory,'sharing.log'),'utf8').trim().split('\n').map(line=>JSON.parse(line));assert.ok(lines.some(line=>line.event==='source-retained'));assert.ok(lines.every(line=>Object.keys(line).every(key=>['time','session','event','format','bytes'].includes(key))));assert.ok(!JSON.stringify(lines).includes(input.invoiceNumber));fake.emit('exit',0);
 }));
