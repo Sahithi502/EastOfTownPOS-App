@@ -58,6 +58,33 @@ npm.cmd run release:check -- --require-signed
 
 The signed packaging command requires signing rather than silently publishing an unsigned application. The release check requires valid application/helper/installer signatures and the installer file. Verify the expected business publisher using Windows file properties and a trusted release machine before distribution. Store the release manifest with the exact installer; recheck SHA-256 after transfer.
 
+## Microsoft Store package (AppX/MSIX family)
+
+The stable electron-builder version locked by this project supports the Store-compatible AppX package format. Partner Center accepts `.appx` as well as `.msix` packages; Microsoft signs Store packages after certification. The app is a full-trust Electron desktop app and requires the `runFullTrust` capability. Store package creation does not use a publisher certificate from this PC.
+
+Build a **test-identity package** and inspect its contents:
+
+```cmd
+npm.cmd run package:store:test
+```
+
+This creates `release/store-test/East of Town Store Test-0.6.0-x64.appx` and checks that Electron, the backend JAR, bundled Java and receipt helper are present and that no database is included. It uses `CN=ms` and `EastOfTownPOS.StoreTest`; this package is only for packaging checks. It is not signed for sideloading, cannot be uploaded as the production Store listing, and should not be installed on a shop computer.
+
+For a production Store package, first create a **Company** developer account through the current Store signup flow, reserve the app in Partner Center, and copy its exact Package/Identity Name, Publisher ID, and publisher display name. Then build with those values (they are public package identity values, not private keys):
+
+```cmd
+set EOT_STORE_IDENTITY=IDENTITY_NAME_FROM_PARTNER_CENTER
+set EOT_STORE_PUBLISHER=CN=PUBLISHER_ID_FROM_PARTNER_CENTER
+set EOT_STORE_PUBLISHER_DISPLAY_NAME=VERIFIED_PUBLISHER_NAME
+npm.cmd run package:store
+```
+
+The output is under `release/store/`. Submit that package to the reserved Partner Center app and use a private Store flight for shop testing after Microsoft certification. The Store re-signs the package; a certificate is not required for Store submission. A direct local sideload is a separate signed-package workflow and is not enabled by the test identity.
+
+Before installing a Store flight on the shop PC, make an application backup to an external location and verify that it can be restored. Keep the existing installation/data intact until the Store version has passed checks for login, product import, sales, invoices, backup, upgrade persistence, printer/scanner, and Windows Share. Store-package data-location behavior must be confirmed on the actual flight before treating it as a production upgrade path. Store updates require internet; normal local billing remains offline.
+
+The CI test package is deliberately unsigned and uses the test identity. Its successful build/contents check does not claim Store certification, signed installation, shop hardware compatibility, database migration, or a real-shop acceptance test.
+
 ## Clean-machine and shop acceptance
 
 Run the following on an isolated Windows VM/test computer before installing over the shop's working installation. Do not silently replace an existing user's installation for a test.

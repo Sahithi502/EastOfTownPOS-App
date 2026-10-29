@@ -16,6 +16,8 @@
     "test:share": "node scripts/share-bridge-test.cjs && node scripts/share-smoke.cjs",
     "test:packaged": "node scripts/packaged-smoke.cjs",
     "release:check": "node scripts/release-check.cjs",
+    "package:store:test": "npm run build && npm run build:share && node scripts/store-package.cjs --test && node scripts/store-package-check.cjs",
+    "package:store": "npm run build && npm run build:share && node scripts/store-package.cjs",
     "build": "tsc --noEmit && vite build --config frontend/vite.config.ts",
     "start": "electron .",
     "package:win": "npm run build && npm run build:share && electron-builder --win nsis",

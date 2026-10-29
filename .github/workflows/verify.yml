@@ -52,6 +52,8 @@ jobs:
         run: npm.cmd run test:packaged
       - name: Record package hashes and signature status
         run: npm.cmd run release:check
+      - name: Build and inspect a Store-format package with test identity
+        run: npm.cmd run package:store:test
       - uses: actions/upload-artifact@v6
         if: always()
         with:
@@ -65,3 +67,5 @@ jobs:
             backend/target/test-fixtures/reference-receipt-*.png
             docs/runtime-manifest.json
             release/release-manifest.json
+            release/store-test/*.appx
+            release/store-test/inspection/AppxManifest.xml
