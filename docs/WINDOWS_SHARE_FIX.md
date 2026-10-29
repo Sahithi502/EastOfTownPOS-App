@@ -43,3 +43,7 @@ Verification:
 Operator regression: share a saved test invoice; click again for the same invoice; cancel and retry; switch PDF to PNG; share a different invoice. The old close-existing-window error must not appear during these ordinary operations. Verify the attachment in WhatsApp before sending to an approved test recipient. Existing shop data and invoice/stock records are unaffected by native sharing-session changes.
 
 Reference: [Microsoft's Windows Share source integration](https://learn.microsoft.com/en-us/windows/apps/develop/windows-integration/integrate-sharesheet-send) describes per-window transfer managers, file packages, and source cancellation/completion events. The demo in the chat **Bill Delivery Options** was not accessible as code through thread retrieval (it returned content references); its implementation and host environment have not been verified or assumed equivalent to Electron.
+
+## Receiving-app error attachment follow-up
+
+The later report of a 21-byte `0.text/plain` attachment is not resolved by the earlier window/session tests. [WHATSAPP_HANDOFF_CANDIDATE.md](WHATSAPP_HANDOFF_CANDIDATE.md) documents a streamed-file/lifetime candidate, source validation, technical diagnostics and explicit receiving-app acceptance. It supersedes immediate helper shutdown on completion/cancellation in the candidate branch. Local unsigned-helper execution is blocked by Code Integrity; native and WhatsApp target verification must not be claimed from mocked tests.

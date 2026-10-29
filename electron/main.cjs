@@ -4,6 +4,7 @@ const { randomBytes } = require('node:crypto');
 const path = require('node:path');
 const fs = require('node:fs');
 const windowsShare = require('./windows-share.cjs');
+const {validateReceipt}=require('./receipt-file.cjs');
 const net = require('node:net');
 let backend, window;
 let shuttingDown=false;
@@ -50,7 +51,11 @@ app.whenReady().then(async () => {
       const form=body instanceof FormData;
       const response=await fetch(`http://127.0.0.1:${port}/api${route}`,{method,headers:{...(form?{}:{'Content-Type':'application/json'}),'X-EOT-Token':token,'X-EOT-Session':userSession},body:body===undefined?undefined:form?body:JSON.stringify(body),signal:AbortSignal.timeout(120000)});
       if(!response.ok){let result;try{result=await response.json();}catch{}throw new Error(result?.message || 'Request failed. Check the local service log.');}
-      return binary?Buffer.from(await response.arrayBuffer()):response.json();
+      if(!binary)return response.json();
+      const bytes=Buffer.from(await response.arrayBuffer());
+      const receiptFormat=route.match(/^\/billing\/invoices\/[a-f0-9-]{36}\/(pdf|png)(?:\?|$)/)?.[1];
+      if(receiptFormat)validateReceipt(bytes,receiptFormat,response.headers.get('content-type'));
+      return bytes;
     };
     ipcMain.handle('catalog:request',async(event,method,route,body)=>{
       caller(event);

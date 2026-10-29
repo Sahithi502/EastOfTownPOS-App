@@ -12,4 +12,6 @@ if(png){
  fs.writeFileSync(attachment,image);
 }
 const helper=path.join(root,'native','bin','ReceiptShare.exe'),mode=process.argv.includes('--show')?'--self-test':'--probe';
-const result=spawnSync(helper,[mode,attachment],{encoding:'utf8',windowsHide:true,timeout:40000});assert.ifError(result.error);assert.equal(result.status,0,result.stderr);assert.match(result.stdout,mode==='--probe'?/attachment-ready/:/attachment-provided/);console.log('PASS: native Windows '+(mode==='--probe'?'attachment preparation':'Share UI and file request')+' ('+(png?'PNG':'PDF')+'). Nothing sent.');console.log('Isolated file: '+attachment);
+const result=spawnSync(helper,[mode,attachment],{encoding:'utf8',windowsHide:true,timeout:40000});assert.ifError(result.error);assert.equal(result.status,0,result.stderr);assert.match(result.stdout,mode==='--probe'?/attachment-ready/:/attachment-provided/);
+const digest=require('node:crypto').createHash('sha256').update(fs.readFileSync(attachment)).digest('hex');assert.ok(result.stdout.includes('attachment-verified:'+(png?'png':'pdf')+':'+fs.statSync(attachment).size+':'+digest),'The full Windows storage stream must match the receipt bytes');assert.match(result.stdout,/stream-materialized/);
+console.log('PASS: native Windows '+(mode==='--probe'?'streamed attachment read-back':'Share UI and file request')+' ('+(png?'PNG':'PDF')+'). Nothing sent.');console.log('Isolated file: '+attachment);
