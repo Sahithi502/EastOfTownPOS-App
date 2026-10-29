@@ -31,7 +31,9 @@ jobs:
       - name: Install frontend and Electron test dependencies
         run: npm.cmd ci
       - name: Typecheck and build renderer
-        run: npm.cmd run build
+        run: |
+          npm.cmd run build
+          npm.cmd run test:ui-errors
       - name: Build and verify native Windows receipt sharing
         run: |
           npm.cmd run build:share
@@ -58,6 +60,7 @@ jobs:
             backend/target/surefire-reports/*.xml
             docs/screenshots/stage6-*.png
             docs/screenshots/receipt-reference-preview-*.png
+            docs/screenshots/navigation-*.png
             backend/target/test-fixtures/reference-receipt-*.pdf
             backend/target/test-fixtures/reference-receipt-*.png
             docs/runtime-manifest.json

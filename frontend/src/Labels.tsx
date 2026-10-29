@@ -1,3 +1,4 @@
+import {errorMessage} from './api';
 import React,{useEffect,useState} from 'react';
 import {api,Variant} from './api';
 
@@ -8,11 +9,11 @@ export function Labels({admin}:{admin:boolean}){
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('');
  const [thermal,setThermal]=useState(false);
  const request={items:Object.entries(selected).map(([variantId,copies])=>({variantId,copies})),widthMm:thermal?80:Number(width),heightMm:Number(height),thermal};
- async function load(){try{setVariants(await api('GET','/variants?search='+encodeURIComponent(search)));}catch(e){setError(String(e));}}
+ async function load(){try{setVariants(await api('GET','/variants?search='+encodeURIComponent(search)));}catch(e){setError(errorMessage(e));}}
  useEffect(()=>{
   load();Promise.all([api('GET','/labels/printers'),api('GET','/labels/settings')]).then(([list,settings])=>{
    setPrinters(list);for(const s of settings){if(s.key==='label.width')setWidth(s.value);if(s.key==='label.height')setHeight(s.value);if(s.key==='label.printer')setPrinter(s.value);if(s.key==='label.thermal')setThermal(s.value==='true');}
-  }).catch(e=>setError(String(e)));
+  }).catch(e=>setError(errorMessage(e)));
  },[]);
  async function action(kind:'preview'|'pdf'|'print'|'test'|'settings'){
   setBusy(true);setError('');setMessage('');try{
@@ -25,7 +26,7 @@ export function Labels({admin}:{admin:boolean}){
    }else{
     const result=await api('POST','/labels/print',{labels:{...request,items:request.items.length?request.items:[{variantId:'test',copies:1}]},printer,test:kind==='test'});setMessage(result.message);
    }
-  }catch(e){setError(String(e));}finally{setBusy(false);}
+  }catch(e){setError(errorMessage(e));}finally{setBusy(false);}
  }
  return <>
   <div className="eyebrow">PRINT & IDENTIFY</div><h1>Barcode labels</h1>
@@ -42,7 +43,7 @@ export function Labels({admin}:{admin:boolean}){
    <div className="actions">
     <button disabled={busy||!printer} onClick={()=>action('test')}>Test print</button>
     {admin&&<button disabled={busy} onClick={()=>action('settings')}>Save preferences</button>}
-    <button disabled={busy} onClick={async()=>{try{setPrinters(await api('GET','/labels/printers'));}catch(e){setError(String(e));}}}>Refresh printers</button>
+    <button disabled={busy} onClick={async()=>{try{setPrinters(await api('GET','/labels/printers'));}catch(e){setError(errorMessage(e));}}}>Refresh printers</button>
    </div>
    <p className="footnote">Use matching stock in the printer driver and actual size / 100% scaling. Long legacy barcodes may require wider labels. A submitted job still requires checking the printer output.</p>
    <p className="footnote">Thermal roll uses 80 mm paper with automatic height and 4 mm side margins. Long barcodes rotate vertically to stay readable. Preview, printing and PDF use the same layout.</p>
